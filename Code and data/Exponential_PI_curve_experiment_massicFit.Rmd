@@ -1,0 +1,585 @@
+---
+title: "Exponential growth PI curve for Chlorella vulgaris NIES 227"
+author: "Paul Chambonniere"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Scope and objectives
+
+This document aims at fitting the PI curve of the microalgae Chlorella vulgaris NIES 227 at 25°C in exponential growth phase from experiments carried out using the O2 cell set-up.
+
+Having evidenced the impact of protein quota on the photosynthetic productivity of the microalgae as well as the decrease of cell protein quota under N deficient conditions and under light limited conditions (despite N sufficient conditions) this experiment was designed to test biomass sampled from growth conditions non nutrient starved.
+
+Measurements were performed at varying light intensities in order to obtain a PI curve and fit the Monod formual modified from Bechet et al. (2015) as presented in the manuscript by Chambonniere et al (2025) to evaluate the growth kinetic parameters Pm and K.
+
+# Preparation code
+## Setting path for data file
+
+The path to read the file of data and import the results into the workspace is set below.
+
+```{r set username, include=FALSE}
+localPath <- getwd()
+```
+
+## Package and function loadings
+
+```{r Code Preparation, echo=FALSE}
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(viridis))
+
+source(paste(localPath,'/Auxiliary R functions/o2cell_prod_fun_kl_corrected.R',sep = ""), echo=FALSE)
+source(paste(localPath,'/Auxiliary R functions/o2cell_PO2_theo_calculation_Pm_massic_lightInhibition_modelModif.R',sep = ""), echo=TRUE)
+
+```
+
+## Theme creation
+```{r Theme creation, echo = FALSE}
+# Creation of a ggplot theme, idea provided by https://benjaminlouis-stat.fr/en/blog/2020-05-21-astuces-ggplot-rmarkdown/)
+base_size <- 20
+
+theme_paul <- theme_bw(base_size = base_size) %+replace%
+  theme(
+      # L'ensemble de la figure
+      plot.title = element_text(size = rel(1), face = "bold", margin = margin(0,0,5,0), hjust = 0.5),
+      # Zone où se situe le graphique
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      # Les axes
+      axis.title = element_text(size = rel(0.85), face = "bold"),
+      axis.text = element_text(size = rel(0.70), face = "bold"),
+      axis.line = element_line(color = "black", arrow = arrow(length = unit(0.5, "lines"), type = "closed")),
+      # La légende
+      # legend.title = element_text(size = rel(0.85), face = "bold"),
+      legend.title = element_blank(),
+      legend.text = element_text(size = rel(0.70), face = "bold"),
+      legend.key = element_rect(fill = "transparent", colour = NA),
+      legend.key.size = unit(1.5, "lines"),
+      legend.background = element_rect(fill = "transparent", colour = NA),
+      legend.box.margin = margin(0.1, 0.05, 0.1 , 0.05),
+      legend.box.spacing = unit(3, units = "pt"),
+      # Les étiquettes dans le cas d'un facetting
+      strip.background = element_rect(fill = "#17252D", color = "#17252D"),
+      strip.text = element_text(size = rel(0.85), face = "bold", color = "white", margin = margin(5,0,5,0))
+    )
+
+my_color_fill <- viridis(4, alpha = 1, begin = 0, end = 1, direction = 1, option = "D")
+my_color_fill_highNumber <- viridis(10, alpha = 1, begin = 0, end = 1, direction = 1, option = "D")
+my_color_manual <- viridis(4, alpha = 1, begin = 0, end = 1, direction = 1, option = "D")
+
+theme_paul_highColourFill <- list(theme_paul,scale_fill_manual(values =  my_color_fill_highNumber,na.translate = FALSE),scale_color_manual(values =  my_color_fill_highNumber,na.translate = FALSE))
+theme_paul <- list(theme_paul,scale_fill_manual(values =  my_color_fill,na.translate = FALSE),scale_color_manual(values =  my_color_manual,na.translate = FALSE))
+
+``` 
+
+
+# Determination of photosynthetic activity parameters
+
+## Initialisation of the calculation
+In this paragraph, the definition of the mesh on which the volume is discretised is defined. THis discretisation and corresponding coordinates (in cylindical coordinates) are then defined based on geometrical characteristics of the reactor.
+
+```{r General calculations,echo = TRUE}
+# Mesh definition
+n_mesh = 25
+
+# Geometric parameters of the O2 cell chamber
+R = 1.27/2*10^(-2) # Radius of the cylinder (m)
+S_top = pi*R^2 # Cross section of the cylinder (m2)
+h = 5.51*10^(-6)/S_top # Height of the cylinder (m), computed based on the the volume measured by weight equivalent and the the radius measured directly. 
+
+# Cylindrical coordinates of the O2 cell chamber
+rcoordinates = seq(0,R,R/n_mesh)
+tetacoordinates = seq(0,2*pi,2*pi/n_mesh)
+zcoordinates = seq(0,h,h/n_mesh)
+
+# O2 cell volume tensor----
+# We now create an array of the elementary volume for the definition used in light distribution calculation. NB: This elementary volume array has one less unit of length for the 3 coordinates.
+# An extra line of NA values for each dimension was voluntarily left in elementary volume mesh as it simplifies the restriction of I_cell on the inner mesh
+
+dV <- array(NA,dim = c(n_mesh,n_mesh,n_mesh + 1))
+
+for (i in 1:(dim(dV)[1])){
+  for (j in 1:(dim(dV)[2])){
+    for (k in 1:(dim(dV)[3]-1)){
+      dV[i,j,k] <- rcoordinates[i]*(rcoordinates[i+1]-rcoordinates[i])*(tetacoordinates[j+1]-tetacoordinates[j])*(zcoordinates[k+1]-zcoordinates[k]) 
+    }
+  }
+}
+  
+for (i in 1:(dim(dV)[1])){
+  for (j in 1:(dim(dV)[2])){
+    dV[i,j,n_mesh+1] <- rcoordinates[i]*(rcoordinates[i+1]-rcoordinates[i])*(tetacoordinates[j+1]-tetacoordinates[j])*(zcoordinates[n_mesh+1]-zcoordinates[n_mesh])
+  }
+}
+# THe radius and angle are corrected to avoid computed several time the same data (case of r = 0 being invariant at any teta and z, and teta = 0 which is redundant with teta = 2*pi)
+rcoordinates <- rcoordinates[2:length(rcoordinates)]
+tetacoordinates <- tetacoordinates[1:(length(tetacoordinates)-1)]  
+
+# The volume is recomputed as the sum of elementary volumes for verification
+V = sum(dV,na.rm = TRUE)
+
+```
+
+
+
+## Experimental results import
+
+### Test solution side measurements
+Dry-weight measurement, times of sampling, light absoprtion are manually introduced here. Missing data is then computed by linear interpolation of available data with time of sampling.
+The data is then stored in a result data frame where each line will ocrrepsond to a productivity measurement.
+
+```{r, echo = TRUE}
+## Dryweight data (g/L)
+dry_weight_AM = mean(c((0.06564 - 0.06461)/10*1000,
+                      (0.07355 - 0.07274)/10*1000))
+dry_weight_PM = mean(c((0.07038 - 0.06708)/15*1000,
+                      (0.07113 - 0.06764)/15*1000))
+
+time_dw_AM = (10 + 45/60)/24 # time in day
+time_dw_PM = (16)/24
+
+## Time of experiment
+
+time_25µmol  <- (15 + 15/60)/24
+time_50µmol  <- (10 + 45/60)/24
+time_100µmol <- (10 +  0/60)/24
+time_250µmol <- (14 + 30/60)/24
+time_500µmol <- (11 + 30/60)/24
+time_maxµmol <- (16 +  0/60)/24
+
+
+## Light absorption
+
+abs_880_100µmol = 0.258 - 0.075
+abs_880_50µmol = 0.194 - 0
+abs_880_500µmol = 0.285 - 0.076
+abs_880_250µmol = 0.384 - 0.076
+abs_880_25µmol = 0.414 - 0.076
+abs_880_maxµmol = 0.435 - 0.076
+
+abs_683_100µmol = 0.432 - 0.051
+abs_683_50µmol = 0.394 - 0
+abs_683_500µmol = 0.474 - 0.051
+abs_683_250µmol = 0.642 - 0.052
+abs_683_25µmol = 0.702 - 0.051
+abs_683_maxµmol = 0.745 - 0.051
+
+
+# Creating a data frame of results
+
+data_PIcurve <- data.frame(timeMeasurement = c(time_25µmol,time_50µmol,time_100µmol,time_250µmol,time_500µmol,time_maxµmol),
+                           Itest = c(25,50,100,250,500,"Max"),
+                           abs880nm = c(abs_880_25µmol,abs_880_50µmol,abs_880_100µmol,abs_880_250µmol,abs_880_500µmol,abs_880_maxµmol),
+                           abs683nm = c(abs_683_25µmol,abs_683_50µmol,abs_683_100µmol,abs_683_250µmol,abs_683_500µmol,abs_683_maxµmol),
+                           cellCount = c(142400,180600,180400,147600,186700,74887*2)*101) # cell/mL
+```
+
+### O2 cell productivity data import
+
+The data has directly collected from the experimental software with no transformation is imported below.
+
+```{r central data import, echo=TRUE}
+# Lab results import
+
+data_25µmol  <- read.csv(file = paste(localPath,'/Data files/Exponential PI curve_data/22_04_06_PItest_25mu.csv',sep = ""),
+                         header = TRUE,sep = ",")
+data_50µmol  <- read.csv(file = paste(localPath,'/Data files//Exponential PI curve_data/22_04_06_PItest_50mu.csv',sep = ""),
+                         header = TRUE,sep = ",")
+data_100µmol <- read.csv(file = paste(localPath,'/Data files//Exponential PI curve_data/22_04_06_PItest_100mu.csv',sep = ""),
+                         header = TRUE,sep = ",")
+data_250µmol <- read.csv(file = paste(localPath,'/Data files//Exponential PI curve_data/22_04_06_PItest_250mu.csv',sep = ""),
+                         header = TRUE,sep = ",")
+data_500µmol <- read.csv(file = paste(localPath,'/Data files//Exponential PI curve_data/22_04_06_PItest_500mu.csv',sep = ""),
+                         header = TRUE,sep = ",")
+data_maxµmol <- read.csv(file = paste(localPath,'/Data files//Exponential PI curve_data/22_04_06_PItest_max.csv',sep = ""),
+                         header = TRUE,sep = ",")
+```
+
+
+### O2 cell productivity determination
+O2 cell direct measurements of O2 rate and production and rate of utilization are computed below. Productivity and respiration are expressed in mg O2/L/min through linear regression of the biological rate of O2 utilisation calculated (see manuscript)
+
+The data is first computed with globally appropriate value of the number of data excluded at the start and at the end of the experiment (this was done due to the existence of phase transition when switching ON and Off the light source).
+
+Data with more unstable conditions was then identified and specific fits were performed by removing unstable parts of the recording.
+
+ALl the data is then gathered in data frames for production and for respiration rate.
+
+```{r Productivity at 25°C, echo=TRUE}
+
+# Calculation of productivities
+
+output_25µmol  <- o2cell_prod_fun_kl_corrected(data_set = data_25µmol  , str_results_name = "25µmol" ,n_discard_start = 150, n_discard_end = 5 , T_test = 25, O2_sat = 8.30 )
+output_50µmol  <- o2cell_prod_fun_kl_corrected(data_set = data_50µmol  , str_results_name = "50µmol" ,n_discard_start = 100, n_discard_end = 5 , T_test = 25, O2_sat = 8.36 )
+output_100µmol <- o2cell_prod_fun_kl_corrected(data_set = data_100µmol , str_results_name = "100µmol",n_discard_start = 100, n_discard_end = 5 , T_test = 25, O2_sat = 8.36 )
+output_250µmol <- o2cell_prod_fun_kl_corrected(data_set = data_250µmol , str_results_name = "250µmol",n_discard_start = 150, n_discard_end = 5 , T_test = 25, O2_sat = 8.30 )
+output_500µmol <- o2cell_prod_fun_kl_corrected(data_set = data_500µmol , str_results_name = "500µmol",n_discard_start = 100, n_discard_end = 5 , T_test = 25, O2_sat = 8.36 )
+output_maxµmol <- o2cell_prod_fun_kl_corrected(data_set = data_maxµmol , str_results_name = "maxµmol",n_discard_start = 150, n_discard_end = 5 , T_test = 25, O2_sat = 8.30 )
+
+
+# Recalculation for run with unstable signals
+  ## Identified such runs were:
+    ### 25 µmol: First light period (need to discard more data at the end)
+    ### 500 µmol: 
+      #### first light period: need to discard more from the end
+      #### second light period: need to discrad more from the start
+output_25µmol_aux  <- o2cell_prod_fun_kl_corrected(data_set = data_25µmol  , str_results_name = "25µmol" ,n_discard_start = 150, n_discard_end = 50 , T_test = 25, O2_sat = 8.30 )
+output_25µmol[1,1:6] <- output_25µmol_aux[1,1:6]
+output_500µmol_aux <- o2cell_prod_fun_kl_corrected(data_set = data_500µmol , str_results_name = "500µmol",n_discard_start = 100, n_discard_end = 50 , T_test = 25, O2_sat = 8.36 )
+output_500µmol[1,1:6] <- output_500µmol_aux[1,1:6]
+output_500µmol_aux <- o2cell_prod_fun_kl_corrected(data_set = data_500µmol , str_results_name = "500µmol",n_discard_start = 220, n_discard_end = 5  , T_test = 25, O2_sat = 8.36 )
+output_500µmol[2,2:6] <- output_500µmol_aux[2,2:6]
+
+# Gathering data
+data_final <- rbind(output_25µmol , output_50µmol, output_100µmol, output_250µmol, output_500µmol, output_maxµmol)
+# O2 production and respiration shown in this table are expressed in mgO2/L/min
+data_final_resp <- subset(data_final, subset = grepl(pattern = "exp 3", x = row.names(data_final)))
+
+```
+
+### Collection and registration of the data in the result data frame
+The side data (drywieght, light absorption coefficeint, total carbon and total nitrogen in the reactor) is now adapted to the full data which separated each individual measuremetn for one set of light conditions.
+
+```{r Appending of the data frame,echo = TRUE}
+# Dryweight
+data_PIcurve$dryweight <- c(NA,dry_weight_AM,NA,NA,NA,dry_weight_PM)
+data_PIcurve$dryweightLinearInterpol <- approx(x=data_PIcurve$timeMeasurement , y=data_PIcurve$dryweight , xout = data_PIcurve$timeMeasurement,method = "linear")$y
+data_PIcurve$dryweightLinearInterpol[3] <- 0.073
+
+# TC-TN
+data_PIcurve$TCVolumic <- c(NA,NA,56.2,89.725,NA,112.275) # TC in the stock reactor in mg/L
+data_PIcurve$TCVolumicLinearInterpol <- approx(x=data_PIcurve$timeMeasurement , y=data_PIcurve$TCVolumic , xout = data_PIcurve$timeMeasurement,method = "linear")$y
+data_PIcurve$TNVolumic <- c(NA,NA,13.665,23.6825,NA,27.475) # TN in the stock reactor in mg/L
+data_PIcurve$TNVolumicLinearInterpol <- approx(x=data_PIcurve$timeMeasurement , y=data_PIcurve$TNVolumic , xout = data_PIcurve$timeMeasurement,method = "linear")$y
+
+data_PIcurve$sigmaDryweight683 <- log(10)*data_PIcurve$abs683nm/(0.01*data_PIcurve$dryweightLinearInterpol) # m2/kg
+data_PIcurve$sigmaCell683 <- log(10)*data_PIcurve$abs683nm/(0.01*data_PIcurve$cellCount/(10^(-6))) # m2/cell
+
+# Now appending the data frame with O2 cell measurement
+dryweight_test <- rep(NA,nrow(data_final))
+abs683_test <- rep(NA,nrow(data_final))
+abs880_test <- rep(NA,nrow(data_final))
+cell_count_test <- rep(NA,nrow(data_final)) # cell/mL
+
+
+for (i in 1:nrow(data_final)){
+  if (data_final$light_intensity[i] <= 30 && data_final$light_intensity[i] >= 20){
+    dryweight_test[i] = data_PIcurve$dryweightLinearInterpol[1]
+    abs683_test[i] = data_PIcurve$abs683nm[1]
+    abs880_test[i] = data_PIcurve$abs880nm[1]
+    cell_count_test[i] = data_PIcurve$cellCount[1]
+  } 
+  if (data_final$light_intensity[i] <= 55 && data_final$light_intensity[i] >= 45){
+    dryweight_test[i] = data_PIcurve$dryweightLinearInterpol[2]
+    abs683_test[i] = data_PIcurve$abs683nm[2]
+    abs880_test[i] = data_PIcurve$abs880nm[2]
+    cell_count_test[i] = data_PIcurve$cellCount[2]
+  } 
+  if (data_final$light_intensity[i] <= 110 && data_final$light_intensity[i] >= 90){
+    dryweight_test[i] = data_PIcurve$dryweightLinearInterpol[3]
+    abs683_test[i] = data_PIcurve$abs683nm[3]
+    abs880_test[i] = data_PIcurve$abs880nm[3]
+    cell_count_test[i] = data_PIcurve$cellCount[3]
+  } 
+  if (data_final$light_intensity[i] <= 1.1*250 && data_final$light_intensity[i] >= 0.9*250){
+    dryweight_test[i] = data_PIcurve$dryweightLinearInterpol[4]
+    abs683_test[i] = data_PIcurve$abs683nm[4]
+    abs880_test[i] = data_PIcurve$abs880nm[4]
+    cell_count_test[i] = data_PIcurve$cellCount[4]
+  } 
+  if (data_final$light_intensity[i] <= 1.1*500 && data_final$light_intensity[i] >= 0.9*500){
+    dryweight_test[i] = data_PIcurve$dryweightLinearInterpol[5]
+    abs683_test[i] = data_PIcurve$abs683nm[5]
+    abs880_test[i] = data_PIcurve$abs880nm[5]
+    cell_count_test[i] = data_PIcurve$cellCount[5]
+  } 
+  if (data_final$light_intensity[i] >= 1000){
+    dryweight_test[i] = data_PIcurve$dryweightLinearInterpol[6]
+    abs683_test[i] = data_PIcurve$abs683nm[6]
+    abs880_test[i] = data_PIcurve$abs880nm[6]
+    cell_count_test[i] = data_PIcurve$cellCount[6]
+  } 
+}
+
+# The final data frame for fit and analysis is now filled with all the data.
+
+data_final$dryweight <- dryweight_test
+data_final$abs683 <- abs683_test
+data_final$abs880 <- abs880_test
+data_final$cellCount <- cell_count_test # cell/mL
+data_final$sigmaDryweight683 <- log(10)*data_final$abs683/(0.01*data_final$dryweight) # m2/kg
+data_final$sigmaCellCount683 <- log(10)*data_final$abs683/(0.01*data_final$cellCount*(10^(6)))
+
+
+```
+
+### Final plot of observations
+Gross specific O2 productivity of the algae according to light conditions in the O2 cell is now plotted with associated uncertainties.
+
+```{r, fig.height = 5 , fig.width = 6, echo = TRUE}
+
+data_final$relStdErrorGrossProd <- 
+    sqrt(data_final$productivity_standardError^2 + data_final$respiration_standardError^2)/
+  (data_final$productivity - data_final$respiration) +
+  0.08/1.96
+
+ggplot(data_final,aes(x = light_intensity , y = (productivity - respiration)/dryweight/1000/60)) + 
+  geom_errorbar(aes(ymin = (productivity - respiration)/dryweight/1000/60*(1 - 1.96*relStdErrorGrossProd),
+                    ymax = (productivity - respiration)/dryweight/1000/60*(1 + 1.96*relStdErrorGrossProd)),
+                width = 30) +
+  geom_errorbarh(aes(xmin = 0.9*light_intensity,
+                     xmax = 1.1*light_intensity),
+                 height = 0.5*10^(-5)) +
+  geom_point(shape = 21, size = 3, stroke = 2) +
+  scale_x_continuous(breaks = c(0, 100, 250, 500, 1000)) +
+  labs(x = expression(bold(atop("Light intensity software",
+                                paste("(µmol·m"^"-2","·s"^"-1",")")))), 
+       y = expression(bold(atop(paste("Gross O"[2]," productivity"),
+                                paste("(g O"[2],"·g"^"-1","·s"^"-1",")"))))) + 
+  theme_paul
+
+
+
+```
+
+## Fit for the determination of photosynthetic parameter
+
+The stop module below enable to not necessarily run the fit which is time consuming, particularly when it comes to Monte-Carlo analysis.
+
+```{r Pm and K fit, echo = TRUE}
+ # stop()
+```
+
+### Determination of best fit
+
+The set of parameters achieving best fit is determined by minimising the squared error on the prediction of gross specific O2 productivity. The function optim is used for the determiniation using Nelder-Mead method to avoid convergence on local zeros.
+
+```{r Pm and K fit, echo = TRUE,  warning = FALSE , error=FALSE , message=FALSE}
+
+# Data was prefitted by eye leading to the initialisation values below.
+
+Pm_0 = 8.8e-04 
+K1_0 = 1.5e+02 
+K2_0 = 1.1e+01
+
+
+Pm_K_optim <- function(x){
+  # This function is created to be used in R optim function for Pm and K determination.
+  SSR = 0
+  for (i in 1:nrow(data_final)){
+    SSR = SSR +
+          (data_final$productivity[i]/60/1000/data_final$dryweight[i] # in gO2/g/s
+            - o2cell_PO2_theo_calculation_Pm_massic_lightInhibition_modelModif(I_software = data_final$light_intensity[i] ,
+                                                                               Pm = x[1] , K1 = x[2] , K2 = x[3],
+                                                                               lambda = (-1)*data_final$respiration[i]/1000/60/(data_final$dryweight[i]) , # gO2/g/s
+                                                                               n_mesh = n_mesh ,
+                                                                               OD_880 = data_final$abs880[i] , OD_683 = data_final$abs683[i] ,
+                                                                               X_algae = data_final$dryweight[i],
+                                                                               path = paste(localPath,'/Auxiliary R functions/',sep=""))/(data_final$dryweight[i]*V*1000)
+           
+           )^2
+  }
+  return(SSR)
+}
+
+fitted <- optim(par = c(Pm_0,K1_0,K2_0), fn = Pm_K_optim, method = "Nelder-Mead",
+                control = list(trace = TRUE, reltol = 10^(-6)))
+Pm <- fitted$par[1]
+K1 <- fitted$par[2]
+K2 <- fitted$par[3]
+fitted
+
+
+plot(x = c(1),y = c(1))
+```
+
+
+### Monte Carlo uncertainty analysis
+The fitting algorithm is now repeated a large amount of times while varying all input parameters within their uncertainty range to determine uncertainty on the fitted photosynthetic parameters.
+The initialisation values used are the best fit value previously determined.
+
+```{r, echo = TRUE, echo = TRUE,  warning = FALSE , error=FALSE , message=FALSE}
+N_MC = 20 # Approx 2h for 10 loops
+
+# Data was prefitted by eye
+
+Pm_0 = 9.103757e-04 # g/g/s
+K1_0 = 1.564803e+02
+K2_0 = 9.593525e+00
+
+Pm_MC_table = rep(NA,N_MC)
+K1_MC_table = rep(NA,N_MC)
+K2_MC_table = rep(NA,N_MC)
+
+for (i_MC in (1:N_MC)){
+  
+  ## Redefinition of input with inserted randomized variations
+  nrow_local <- nrow(data_final)
+  
+  local_productivity <- rep(NA,nrow_local)
+  local_light_intensity <- rep(NA,nrow_local)
+  local_respiration <- rep(NA,nrow_local)
+  local_dryweight <- rep(NA,nrow_local)
+  local_abs880 <- rep(NA,nrow_local)
+  local_abs683 <- rep(NA,nrow_local)
+  for (k_MC in (1:nrow_local)){
+    local_productivity[k_MC] <- data_final$productivity[k_MC] +
+      rnorm(n = 1, mean = 0, sd = data_final$productivity_standardError[k_MC])
+    local_light_intensity[k_MC] <- data_final$light_intensity[k_MC]*(
+      1+rnorm(n = 1, mean = 0, sd = 0.075/1.96))
+    local_respiration[k_MC] <- data_final$respiration[k_MC] + 
+      rnorm(n = 1, mean = 0, sd = data_final$respiration_standardError[k_MC])
+    local_dryweight[k_MC] <- data_final$dryweight[k_MC]*(
+      1+rnorm(n = 1, mean = 0, sd = 0.078/1.96))
+    local_abs880[k_MC] <- data_final$abs880[k_MC]*(
+      1+rnorm(n = 1, mean = 0, sd = 0.1/1.96))
+    local_abs683[k_MC] <- data_final$abs683[k_MC]*(
+      1 + rnorm(n = 1, mean = 0, sd = 0.1/1.96))
+  }
+  data_local <- data.frame(
+    productivity = local_productivity,
+    light_intensity = local_light_intensity,
+    respiration = local_respiration,
+    dryweight = local_dryweight,
+    abs880 = local_abs880,
+    abs683 = local_abs683)
+  
+  ##### Optimization
+  Pm_K_optim_local <- function(x){
+    # This function is created to be used in R optim function for Pm and K determination.
+    SSR = 0
+    for (i in 1:nrow(data_local)){
+      SSR = SSR +
+        (data_local$productivity[i]/60/1000/data_local$dryweight[i] # in gO2/g/s
+         - o2cell_PO2_theo_calculation_Pm_massic_lightInhibition_modelModif(I_software = data_local$light_intensity[i] ,
+                                                                            Pm = x[1] , K1 = x[2] , K2 = x[3],
+                                                                            lambda = (-1)*data_local$respiration[i]/1000/60/(data_local$dryweight[i]) , # gO2/g/s
+                                                                            n_mesh = n_mesh ,
+                                                                            OD_880 = data_local$abs880[i] , OD_683 = data_local$abs683[i] ,
+                                                                            X_algae = data_local$dryweight[i],
+                                                                            path = paste(localPath,'/Auxiliary R functions/',sep=""))/(data_local$dryweight[i]*V*1000)
+         
+        )^2
+    }
+    return(SSR)
+  }
+  
+  fitted_local <- optim(par = c(Pm_0,K1_0,K2_0), fn = Pm_K_optim_local, method = "Nelder-Mead",
+                  control = list(trace = TRUE, reltol = 10^(-6)))
+  
+  Pm_MC_table[i_MC] <- fitted_local$par[1]
+  K1_MC_table[i_MC] <- fitted_local$par[2]
+  K2_MC_table[i_MC] <- fitted_local$par[3]
+  print(i_MC)
+}
+
+MC_matrix <- 
+  matrix(c(Pm_MC_table, 
+           K1_MC_table,
+           K2_MC_table,
+           Pm_MC_table/K1_MC_table),
+         nrow = 4,
+         byrow = TRUE)
+
+plot(c(1,1))
+View(MC_matrix)
+```
+
+
+# Final validation plot
+
+The final plot of predicted versus measured net O2 productivity is developed in this paragraph.
+```{r, echo = TRUE}
+Pm_0 = 9.103757e-04
+K1_0 = 1.564803e+02        
+K2_0 = 9.593525e+00
+
+K1_0/Pm_0
+
+# Standard deviation from MC analysis
+Pm_0_IC = 3.21901E-05
+K1_0_IC =  4.695202283
+K2_0_IC = 0.651274513
+
+
+
+PO2_theo <- rep(NA,times = nrow(data_final))
+for (i in 1:nrow(data_final)){
+  PO2_theo[i] <- o2cell_PO2_theo_calculation_Pm_massic_lightInhibition_modelModif(I_software = data_final$light_intensity[i] ,
+                                                                                  Pm = Pm_0 , K1 = K1_0 , K2 = K2_0,
+                                                                                  lambda = (-1)*data_final$respiration[i]/1000/60/(data_final$dryweight[i]) ,
+                                                                                  n_mesh = n_mesh ,
+                                                                                  OD_880 = data_final$abs880[i] , OD_683 = data_final$abs683[i] ,
+                                                                                  X_algae = data_final$dryweight[i],
+                                                                                  path = paste(localPath,'/Auxiliary R functions/',sep=""))
+}
+
+
+
+PO2_theo_min <- rep(NA,times = nrow(data_final))
+for (i in 1:nrow(data_final)){
+  PO2_theo_min[i] <- o2cell_PO2_theo_calculation_Pm_massic_lightInhibition_modelModif(I_software = data_final$light_intensity[i] ,
+                                                                                      Pm = Pm_0 - 1.96*Pm_0_IC, 
+                                                                                      K1 = K1_0 + 1.96*Pm_0_IC , 
+                                                                                      K2 = K2_0 - 1.96*K2_0_IC,
+                                                                                      lambda = (-1)*data_final$respiration[i]/1000/60/(data_final$dryweight[i]) ,
+                                                                                      n_mesh = n_mesh ,
+                                                                                      OD_880 = data_final$abs880[i] , OD_683 = data_final$abs683[i] ,
+                                                                                      X_algae = data_final$dryweight[i],
+                                                                                      path = paste(localPath,'/Auxiliary R functions/',sep=""))
+}
+
+PO2_theo_max <- rep(NA,times = nrow(data_final))
+for (i in 1:nrow(data_final)){
+  PO2_theo_max[i] <- o2cell_PO2_theo_calculation_Pm_massic_lightInhibition_modelModif(I_software = data_final$light_intensity[i] ,
+                                                                                      Pm = Pm_0 + 1.96*Pm_0_IC, 
+                                                                                      K1 = K1_0 - 1.96*Pm_0_IC , 
+                                                                                      K2 = K2_0 + 1.96*K2_0_IC,
+                                                                                      lambda = (-1)*data_final$respiration[i]/1000/60/(data_final$dryweight[i]) ,
+                                                                                      n_mesh = n_mesh ,
+                                                                                      OD_880 = data_final$abs880[i] , OD_683 = data_final$abs683[i] ,
+                                                                                      X_algae = data_final$dryweight[i],
+                                                                                      path = paste(localPath,'/Auxiliary R functions/',sep=""))
+}
+
+
+data_final$PO2Theo <- PO2_theo
+data_final$PO2TheoMin <- PO2_theo_min
+data_final$PO2TheoMax <- PO2_theo_max
+plot(c(1))
+
+```
+
+```{r, fig.width=6, fig.height = 5}
+
+data_final$relStdErrorNetProd <- 
+    sqrt(data_final$productivity_standardError^2 )/(data_final$productivity) +
+  0.08/1.96
+
+ggplot(data_final,aes(x = PO2Theo/(dryweight*V*1000), y = productivity/dryweight/1000/60)) + 
+  geom_errorbar(aes(ymin = productivity/dryweight/1000/60*(1 - 1.96*relStdErrorNetProd),
+                    ymax = productivity/dryweight/1000/60*(1 + 1.96*relStdErrorNetProd)),
+                width = 0.5*10^(-5)) +
+  geom_errorbarh(aes(xmin = PO2TheoMin/(dryweight*V*1000),
+                    xmax = PO2TheoMax/(dryweight*V*1000)),
+                height = 0.5*10^(-5)) +
+  geom_point(shape = 21, size = 2, stroke = 2) +
+  geom_abline(slope = 1, intercept = 0, size = 1, linetype = "dashed") + 
+  labs(x = expression(bold(atop(paste("Predicted net O"[2]," productivity"),
+                                paste("(g O"[2],"·g"^"-1","·s"^"-1",")")))),
+       y = expression(bold(atop(paste("Measured net O"[2]," productivity"),
+                                paste("(g O"[2],"·g"^"-1","·s"^"-1",")"))))) + 
+  theme_paul
+
+
+
+SS_res <- sum((data_final$PO2Theo/(data_final$dryweight*V*1000) -
+                 data_final$productivity/data_final$dryweight/1000/60)^2)
+SS_tot <- sum((data_final$productivity/data_final$dryweight/1000/60 - 
+                 mean(data_final$productivity/data_final$dryweight/1000/60))^2)
+
+R2 = 1 - SS_res/SS_tot
+
+```

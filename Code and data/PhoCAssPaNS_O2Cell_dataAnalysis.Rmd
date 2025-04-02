@@ -1,0 +1,294 @@
+---
+title: "PhoCAssPaNS_O2Cell_dataAnalysis"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Scope
+
+This file aims at determining the oxygen productivity of the microalgae CHlorella vulgaris NIES 227 according to light intensity measured as part of the study Scalable modelling of photosynthetic carbon assimilation and partition during
+  nitrogen starvation for the microalga Chlorella vulgaris NIES 227.
+  
+The data collected in that study is loaded and then analysed as described in the manuscript and suplementary information of the associated study.
+
+# Initialisation
+## Setting path for data file
+
+The path to read the file of data and import the results into the workspace is set below.
+
+```{r set username, include=FALSE}
+localPath <- getwd()
+```
+
+## Sourcing of functions 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+debugSource(paste(localPath,'/Auxiliary R functions/o2cell_prod_fun_kl_corrected.R',sep = ""), echo=TRUE)
+```
+
+# Data import
+
+```{r cars}
+general_path <- paste(localPath,'/Data files/O2Cell_data/',sep = "")
+list_files <- list.files(path = general_path)
+list_num_exp <- c(1,
+                10,8,9,4,2,3,7,5,6,
+                19,17,18,13,11,12,16,14,15,
+                28,26,27,22,20,21,25,23,24,
+                37,35,36,31,29,30,34,32,33,
+                46,44,45,40,38,39,43,41,42,
+                52,50,51,49,47,48,
+                58,56,57,55,53,54)
+
+list_files <- list_files[-which(list_files == "InterpretedData")]
+```
+
+# Experiment parameters
+
+```{r }
+n_exp <- length(list_files)
+n_discard_start_table <- rep(150,n_exp)
+n_discard_end_table <-  rep(5,n_exp)
+T_test_table <-  rep(25,n_exp)
+o2_sat_table <-  rep(8.35,n_exp)
+
+# Changing value of oxygen saturation concentration data where relevant
+o2_sat_table[1:28] <- 8.4*rep(1,28)
+o2_sat_table[29:37] <- 8.3*rep(1,9)
+o2_sat_table[53:58] <- 8.4*rep(1,6)
+
+```
+
+
+# Results analysis
+```{r}
+results_O2cell <- data.frame(listFiles = list_files , listNumExp = list_num_exp)
+results_O2cell <- results_O2cell[order(results_O2cell$listNumExp),]
+
+
+results_O2cell$lightIntensity1 <- rep(NA,n_exp)
+results_O2cell$productivity1 <- rep(NA,n_exp)
+results_O2cell$productivitySE1 <- rep(NA,n_exp)
+results_O2cell$nLight1 <- rep(NA,n_exp)
+results_O2cell$r2Light1 <- rep(NA,n_exp)
+results_O2cell$pvalueLight1 <- rep(NA,n_exp)
+results_O2cell$respiration1 <- rep(NA,n_exp)
+results_O2cell$respirationSE1 <- rep(NA,n_exp)
+results_O2cell$nDark1 <- rep(NA,n_exp)
+results_O2cell$r2Dark1 <- rep(NA,n_exp)
+results_O2cell$pvalueDark1 <- rep(NA,n_exp)
+
+results_O2cell$lightIntensity2 <- rep(NA,n_exp)
+results_O2cell$productivity2 <- rep(NA,n_exp)
+results_O2cell$productivitySE2 <- rep(NA,n_exp)
+results_O2cell$nLight2 <- rep(NA,n_exp)
+results_O2cell$r2Light2 <- rep(NA,n_exp)
+results_O2cell$pvalueLight2 <- rep(NA,n_exp)
+results_O2cell$respiration2 <- rep(NA,n_exp)
+results_O2cell$respirationSE2 <- rep(NA,n_exp)
+results_O2cell$nDark2 <- rep(NA,n_exp)
+results_O2cell$r2Dark2 <- rep(NA,n_exp)
+results_O2cell$pvalueDark2 <- rep(NA,n_exp)
+
+
+for (iexp in (1:n_exp)){
+  path <- paste(general_path,results_O2cell$listFiles[iexp],sep = "")
+  n_discard_start <- n_discard_start_table[iexp]
+  n_discard_end <-n_discard_end_table[iexp]
+  T_test <- T_test_table[iexp]
+  o2_sat <- o2_sat_table[iexp]
+  
+  data_set <- read.csv(path, header=TRUE)
+  
+  results_O2cell_local <- o2cell_prod_fun_kl_corrected(data_set, paste("exp_",iexp,sep = ""), n_discard_start,
+  n_discard_end,T_test,o2_sat)
+  
+  results_O2cell$lightIntensity1[iexp] <- results_O2cell_local$light_intensity[1]
+  results_O2cell$productivity1[iexp] <- results_O2cell_local$productivity[1]
+  results_O2cell$productivitySE1[iexp] <- results_O2cell_local$productivity_standardError[1]
+  results_O2cell$nLight1[iexp] <- results_O2cell_local$N_light[1]
+  results_O2cell$r2Light1[iexp] <- results_O2cell_local$R2_light[1]
+  results_O2cell$pvalueLight1[iexp] <- results_O2cell_local$pValue_light[1]
+  results_O2cell$respiration1[iexp] <- results_O2cell_local$respiration[1]
+  results_O2cell$respirationSE1[iexp] <- results_O2cell_local$respiration_standardError[1]
+  results_O2cell$nDark1[iexp] <- results_O2cell_local$N_dark[1]
+  results_O2cell$r2Dark1[iexp] <- results_O2cell_local$R2_dark[1]
+  results_O2cell$pvalueDark1[iexp] <- results_O2cell_local$pValue_dark[1]
+  
+  results_O2cell$lightIntensity2[iexp] <- results_O2cell_local$light_intensity[2]
+  results_O2cell$productivity2[iexp] <- results_O2cell_local$productivity[2]
+  results_O2cell$productivitySE2[iexp] <- results_O2cell_local$productivity_standardError[2]
+  results_O2cell$nLight2[iexp] <- results_O2cell_local$N_light[2]
+  results_O2cell$r2Light2[iexp] <- results_O2cell_local$R2_light[2]
+  results_O2cell$pvalueLight2[iexp] <- results_O2cell_local$pValue_light[2]
+  results_O2cell$respiration2[iexp] <- results_O2cell_local$respiration[2]
+  results_O2cell$respirationSE2[iexp] <- results_O2cell_local$respiration_standardError[2]
+  results_O2cell$nDark2[iexp] <- results_O2cell_local$N_dark[2]
+  results_O2cell$r2Dark2[iexp] <- results_O2cell_local$R2_dark[2]
+  results_O2cell$pvalueDark2[iexp] <- results_O2cell_local$pValue_dark[2]
+}
+
+
+
+```
+
+## Readjusting for experiments with poorer fits
+```{r, echo=TRUE}
+# Changing for the run of light 1
+i_exp_rerun_light1 <- c(2,3,20,21,26,28,29,32,36,39,41,45,46,47,52,53)
+n_discard_start_rerun_light1 <- c(50,215,200,150,165,200,150,175,150,120,175,170,170,200,150,170) 
+n_discard_end_rerun_light1 <-  c(100,5,5,10,5,5,25,15,45,50,5,5,5,5,55,5)
+
+
+matrix(c(i_exp_rerun_light1,n_discard_start_rerun_light1,n_discard_end_rerun_light1),ncol = 3)
+
+for (iexp in (1:length(i_exp_rerun_light1))){
+  path <- paste(general_path,results_O2cell$listFiles[i_exp_rerun_light1[iexp]],sep = "")
+  n_discard_start <- n_discard_start_rerun_light1[iexp]
+  n_discard_end <-n_discard_end_rerun_light1[iexp]
+  T_test <- T_test_table[i_exp_rerun_light1[iexp]]
+  o2_sat <- o2_sat_table[i_exp_rerun_light1[iexp]]
+  
+  data_set <- read.csv(path, header=TRUE)
+  
+  results_O2cell_local <- o2cell_prod_fun_kl_corrected(data_set, paste("exp_",iexp,sep = ""), n_discard_start,
+  n_discard_end,T_test,o2_sat)
+  
+  results_O2cell$lightIntensity1[i_exp_rerun_light1[iexp]] <- results_O2cell_local$light_intensity[1]
+  results_O2cell$productivity1[i_exp_rerun_light1[iexp]] <- results_O2cell_local$productivity[1]
+  results_O2cell$productivitySE1[i_exp_rerun_light1[iexp]] <- results_O2cell_local$productivity_standardError[1]
+  results_O2cell$nLight1[i_exp_rerun_light1[iexp]] <- results_O2cell_local$N_light[1]
+  results_O2cell$r2Light1[i_exp_rerun_light1[iexp]] <- results_O2cell_local$R2_light[1]
+  results_O2cell$pvalueLight1[i_exp_rerun_light1[iexp]] <- results_O2cell_local$pValue_light[1]
+}
+
+```
+
+
+
+```{r, echo=TRUE}
+# Changing for the run of Resp 1
+i_exp_rerun_resp1 <- c(1,11,27,29,41,44,45,46,47,53)
+n_discard_start_rerun_resp1 <- c(200,200,170,75,250,50,180,185,250,250) 
+n_discard_end_rerun_resp1 <-  c(5,5,5,75,5,50,15,5,10,5)
+
+matrix(c(i_exp_rerun_resp1,n_discard_start_rerun_resp1,n_discard_end_rerun_resp1),ncol = 3)
+
+for (iexp in (1:length(i_exp_rerun_resp1))){
+  path <- paste(general_path,results_O2cell$listFiles[i_exp_rerun_resp1[iexp]],sep = "")
+  n_discard_start <- n_discard_start_rerun_resp1[iexp]
+  n_discard_end <-n_discard_end_rerun_resp1[iexp]
+  T_test <- T_test_table[i_exp_rerun_resp1[iexp]]
+  o2_sat <- o2_sat_table[i_exp_rerun_resp1[iexp]]
+  
+  data_set <- read.csv(path, header=TRUE)
+  
+  results_O2cell_local <- o2cell_prod_fun_kl_corrected(data_set, paste("exp_",iexp,sep = ""), n_discard_start,
+  n_discard_end,T_test,o2_sat)
+  
+  results_O2cell$respiration1[i_exp_rerun_resp1[iexp]] <- results_O2cell_local$respiration[1]
+  results_O2cell$respirationSE1[i_exp_rerun_resp1[iexp]] <- results_O2cell_local$respiration_standardError[1]
+  results_O2cell$nDark1[i_exp_rerun_resp1[iexp]] <- results_O2cell_local$N_dark[1]
+  results_O2cell$r2Dark1[i_exp_rerun_resp1[iexp]] <- results_O2cell_local$R2_dark[1]
+  results_O2cell$pvalueDark1[i_exp_rerun_resp1[iexp]] <- results_O2cell_local$pValue_dark[1]
+}
+
+
+```
+
+```{r, echo=TRUE}
+# Changing for the run of light 2
+i_exp_rerun_light2 <- c(2,3,6,11,12,18,20,24,33,38,41,42,46,52,54,56)
+n_discard_start_rerun_light2 <- c(200,200,200,220,150,200,230,170,200,200,200,150,200,170,50,200) 
+n_discard_end_rerun_light2 <-  c(5,5,5,5,35,5,5,5,5,5,55,55,20,25,5,5)
+
+
+matrix(c(i_exp_rerun_light2,n_discard_start_rerun_light2,n_discard_end_rerun_light2),ncol = 3)
+
+
+for (iexp in (1:length(i_exp_rerun_light2))){
+  path <- paste(general_path,results_O2cell$listFiles[i_exp_rerun_light2[iexp]],sep = "")
+  n_discard_start <- n_discard_start_rerun_light2[iexp]
+  n_discard_end <-n_discard_end_rerun_light2[iexp]
+  T_test <- T_test_table[i_exp_rerun_light2[iexp]]
+  o2_sat <- o2_sat_table[i_exp_rerun_light2[iexp]]
+  
+  data_set <- read.csv(path, header=TRUE)
+  
+  results_O2cell_local <- o2cell_prod_fun_kl_corrected(data_set, paste("exp_",iexp,sep = ""), n_discard_start,
+  n_discard_end,T_test,o2_sat)
+  
+  results_O2cell$lightIntensity2[i_exp_rerun_light2[iexp]] <- results_O2cell_local$light_intensity[2]
+  results_O2cell$productivity2[i_exp_rerun_light2[iexp]] <- results_O2cell_local$productivity[2]
+  results_O2cell$productivitySE2[i_exp_rerun_light2[iexp]] <- results_O2cell_local$productivity_standardError[2]
+  results_O2cell$nLight2[i_exp_rerun_light2[iexp]] <- results_O2cell_local$N_light[2]
+  results_O2cell$r2Light2[i_exp_rerun_light2[iexp]] <- results_O2cell_local$R2_light[2]
+  results_O2cell$pvalueLight2[i_exp_rerun_light2[iexp]] <- results_O2cell_local$pValue_light[2]
+}
+
+```
+
+
+```{r, echo=TRUE}
+# Changing for the run of Resp 2
+i_exp_rerun_resp2 <- c(34,46,48,54)
+n_discard_start_rerun_resp2 <- c(160,190,100,200) 
+n_discard_end_rerun_resp2 <-  c(15,5,10,5)
+
+
+matrix(c(i_exp_rerun_resp2,n_discard_start_rerun_resp2,n_discard_end_rerun_resp2),ncol = 3)
+
+for (iexp in (1:length(i_exp_rerun_resp2))){
+  path <- paste(general_path,results_O2cell$listFiles[i_exp_rerun_resp2[iexp]],sep = "")
+  n_discard_start <- n_discard_start_rerun_resp2[iexp]
+  n_discard_end <-n_discard_end_rerun_resp2[iexp]
+  T_test <- T_test_table[i_exp_rerun_resp2[iexp]]
+  o2_sat <- o2_sat_table[i_exp_rerun_resp2[iexp]]
+  
+  data_set <- read.csv(path, header=TRUE)
+  
+  results_O2cell_local <- o2cell_prod_fun_kl_corrected(data_set, paste("exp_",iexp,sep = ""), n_discard_start,
+  n_discard_end,T_test,o2_sat)
+  
+  results_O2cell$respiration2[i_exp_rerun_resp2[iexp]] <- results_O2cell_local$respiration[2]
+  results_O2cell$respirationSE2[i_exp_rerun_resp2[iexp]] <- results_O2cell_local$respiration_standardError[2]
+  results_O2cell$nDark2[i_exp_rerun_resp2[iexp]] <- results_O2cell_local$N_dark[2]
+  results_O2cell$r2Dark2[i_exp_rerun_resp2[iexp]] <- results_O2cell_local$R2_dark[2]
+  results_O2cell$pvalueDark2[i_exp_rerun_resp2[iexp]] <- results_O2cell_local$pValue_dark[2]
+}
+
+```
+## Cas particulier :  experiment36
+
+```{r}
+
+iexp <- 36
+
+path <- paste(general_path,results_O2cell$listFiles[iexp],sep = "")
+n_discard_start <- 50
+n_discard_end <- 50
+T_test <- T_test_table[iexp]
+o2_sat <- o2_sat_table[iexp]
+
+data_set <- read.csv(path, header=TRUE)
+
+results_O2cell_local <- o2cell_prod_fun_kl_corrected(data_set, paste("exp_",iexp,sep = ""), n_discard_start,
+n_discard_end,T_test,o2_sat)
+
+results_O2cell$lightIntensity2[iexp] <- results_O2cell_local$light_intensity[3]
+results_O2cell$productivity2[iexp] <- results_O2cell_local$productivity[3]
+results_O2cell$productivitySE2[iexp] <- results_O2cell_local$productivity_standardError[3]
+results_O2cell$nLight2[iexp] <- results_O2cell_local$N_light[3]
+results_O2cell$r2Light2[iexp] <- results_O2cell_local$R2_light[3]
+results_O2cell$pvalueLight2[iexp] <- results_O2cell_local$pValue_light[3]
+
+
+```
+
+```{r}
+write.csv(results_O2cell,file = paste(general_path,"/InterpretedData/24_09_11_lustulia_O2cell_results.csv",sep = ""))
+```
