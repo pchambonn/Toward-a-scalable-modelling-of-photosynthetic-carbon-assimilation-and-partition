@@ -27,10 +27,10 @@ The data associated needed for the code to run has been registered at the follow
 
 In order to run, the present folder can be fully downloaded. The files available at the given DOI must also be downloaded and organised as follow to run the analysis:
   - A folder '**Data files**' must be created in the root folder '**Code and data**' available in the present github repository containing the R files.
-      * The file "**Results_PhoCAssPaNS.xlsx**" must be downloaded from the collection cited above and copied in the newly created folder 'Data files'. This file is available at the following [DOI:  https://doi.org/10.6084/m9.figshare.28714259]
+      * The file "**Results_PhoCAssPaNS.xlsx**" must be downloaded from the collection cited above and copied in the newly created folder 'Data files'. This file is also directly available at the following [DOI:  https://doi.org/10.6084/m9.figshare.28714259]
   - A folder '**Exponential PI curve_data**' must be created in the folder '**Data files**'.
-      * The files available in the item '_Results of the determination of the PI curve for Chlorella vulgaris NIES 227 in exponential growth phase_' [DOI:  https://doi.org/10.6084/m9.figshare.28714355] must be downloaded and placed in the folder 'Exponential PI curve_data'.
+      * The files available in the item '_Results of the determination of the PI curve for Chlorella vulgaris NIES 227 in exponential growth phase_' also directly available at the following [DOI:  https://doi.org/10.6084/m9.figshare.28714355] must be downloaded and placed in the folder 'Exponential PI curve_data'.
    - A folder '**O2Cell_data**' must finally be created in the folder '**Data files**'.
-      * The files available in the item  '_Results associated to the specific oxymetric experiments performed for the publication 'Scalable modelling of photosynthetic carbon assimilation and partition during nitrogen starvation for the microalga Chlorella vulgaris NIES 227_' [DOI:  https://doi.org/10.6084/m9.figshare.28714391] must be dowloaded and placed in the folder '**O2Cell_data**'.
+      * The files available in the item  '_Results associated to the specific oxymetric experiments performed for the publication 'Scalable modelling of photosynthetic carbon assimilation and partition during nitrogen starvation for the microalga Chlorella vulgaris NIES 227_' also directly available at the following [DOI:  https://doi.org/10.6084/m9.figshare.28714391] must be dowloaded and placed in the folder '**O2Cell_data**'.
     
 All the codes available should now be running normally.
