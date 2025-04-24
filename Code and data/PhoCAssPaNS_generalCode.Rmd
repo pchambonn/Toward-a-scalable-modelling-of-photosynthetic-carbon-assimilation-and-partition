@@ -13,7 +13,7 @@ knitr::opts_chunk$set(message = FALSE,warning = FALSE)
 
 # Scope
 
-This markdown document aims at showing the results associated to the pubication "Scalable modelling of photosynthetic carbon assimilation and partition during nitrogen starvation for the microalga Chlorella vulgaris NIES 227". All the central results shown in the article are developped here. Some extra data analysis which were not included in the final article due to not serving directly the analysis but which were important to develop the article narrative can also be found.
+This markdown document aims at showing the results associated to the publication "Scalable modelling of photosynthetic carbon assimilation and partition during nitrogen starvation for the microalga Chlorella vulgaris NIES 227". All the central results shown in the article are developped here. Some extra data analysis which were not included in the final article due to not serving directly the analysis but which were important to develop the article narrative can also be found.
 
 # Initialisation
 
@@ -23,7 +23,15 @@ The path to read the file of data and import the results into the workspace is s
 
 ```{r set username, include=FALSE}
 localPath <- getwd()
+```
 
+## Opting IN or opting OUT of the last simulation comparing experimental and simulated data sets
+
+Because the last simulation aiming at directly comparing the experimental data sets with results from the simulation may be long (several hours), an option is proposed here giving the possibility to not run this part of the simulation. 
+When the parameter last simulation is activated, a stop module is activated ending the run of the main code.
+
+```{r Choice of running the final simulation, include=FALSE}
+lastSimulation <- 1
 ```
 
 ## Load functions and packages
@@ -385,7 +393,7 @@ results_PhoCAssPaNS_df$sigma880Mass <- sigma_880_mass
 
 ### Light supply analysis
 
-Total light intensity abosrbed, dry-weight or cell specific, is computed here (µmol/s/g DW or µmol/s/cell, respectively) assuming Beer-Lambert law in a cylindrical reactor.
+Total light intensity absorbed, dry-weight or cell specific, is computed here (µmol/s/g DW or µmol/s/cell, respectively) assuming Beer-Lambert law in a cylindrical reactor.
 
 ```{r, echo = TRUE}
 
@@ -402,7 +410,7 @@ results_PhoCAssPaNS_df$averageLightDensityCell <-
 
 ### Cell division associated variables
 
-Variables related to cell division are calculated and appended to the main data frame below. BEcause cell division is calculated based on consecutive data using Euler method, cell specific data or protein specific data will be normaised using interval-averaged data ("MidInterval" vectors).
+Variables related to cell division are calculated and appended to the main data frame below. Because cell division is calculated based on consecutive data using Euler method, cell specific data or protein specific data will be normalised using interval-averaged data ("MidInterval" vectors).
 
 ```{r, echo = TRUE}
 # Creation of mid interval data to compare growth rate with these quantities
@@ -429,7 +437,7 @@ results_PhoCAssPaNS_df$divisionRate <- 1/results_PhoCAssPaNS_df$cellCountMidInte
 
 ## Reactor specific data frame
 
-A second data frame is created which will serve to store the data generated in the analyis which are characteristic of a single reactor. This data frame will then serve for reactor specific analyses.
+A second data frame is created which will serve to store the data generated in the analysis which are characteristic of a single reactor. This data frame will then serve for reactor specific analyses.
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE, results='hide'}
 
@@ -441,7 +449,7 @@ reactorPhoCAssPaNS_df <-
 
 ## Complementary parameters needed for the analysis
 
-Parmeters not measured or determined in separate experiments needed for the analysis are referenced in the following block.
+Parameters not measured or determined in separate experiments needed for the analysis are referenced in the following block.
 
 ```{r, echo = TRUE}
 
@@ -3746,8 +3754,10 @@ summary(local_lm)$coefficients[2]
 
 As model verification may take up some time, this module was added which stops a run. The model verification must then be obtained by running the part of the code below separately.
 
-```{r, echo = TRUE}
-stop()
+```{r stop capsule}
+if (lastSimulation == 0){
+ stop()
+}
 ```
 
 ## Initialisation variables
@@ -4710,7 +4720,9 @@ R2_cellcount
 ```
 
 ```{r stop capsule}
-# stop()
+if (lastSimulation == 0){
+ stop()
+}
 ```
 
 # Miscellaneous
