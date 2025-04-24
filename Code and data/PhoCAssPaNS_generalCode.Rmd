@@ -9,6 +9,9 @@ output: word_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(message = FALSE,warning = FALSE)
+
+# Define whether to include code in the report
+			include_code <- TRUE  # Change this to FALSE to hide code ;  TRUE to show code
 ```
 
 # Scope
@@ -36,10 +39,10 @@ lastSimulation <- 1
 
 ## Load functions and packages
 
-```{r Code preparation, echo = TRUE}
+```{r Code preparation, echo = include_code}
 # Loading packages
 
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = include_code)
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(readxl))
 suppressPackageStartupMessages(library(patchwork))
@@ -112,7 +115,7 @@ results_PhoCAssPaNS <- read_excel(paste(localPath,"/Data files/Results_PhoCAssPa
 
 ## Analysis parameters
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 # Definition of the mesh governing the discretisation of the calculation applied to the respirometry cell for light distribution
 n_mesh <- 50 # 50 was use in order to compromise calculation duration
 
@@ -287,7 +290,7 @@ light_absorbed_interval <- results_PhoCAssPaNS$`Light absorbed delta t`
 
 All the data collected is now logged in a single data frame.
 
-```{r Compilation in a data frame, echo = TRUE}
+```{r Compilation in a data frame, echo = include_code}
 
 results_PhoCAssPaNS_df = data.frame(day = results_PhoCAssPaNS$Day , sample = results_PhoCAssPaNS$Sample , concentrationClass = concentration_class , lightClass = light_class, 
                                  dryWeight = dry_weight , cellWeight = cell_weight , cellCount = cell_count ,  cellCountSpecific = cell_count_specific ,
@@ -314,7 +317,7 @@ results_PhoCAssPaNS_df = data.frame(day = results_PhoCAssPaNS$Day , sample = res
 
 The first measurement of pigment was measured with different dilutions and must therefore be added manually as done here
 
-```{r A posteriori correction of data, echo = TRUE}
+```{r A posteriori correction of data, echo = include_code}
 
 results_PhoCAssPaNS_df$totalChlaSpecificWeight[1:10] <- 36.43
 results_PhoCAssPaNS_df$totalChlbSpecificWeight[1:10] <- 18.37
@@ -332,7 +335,7 @@ Variables needed for the O2 productivity analyses are added here.
   - n_algae_O2cell: the number of algae cell present in the O2 cell for each measurement (cell)
 Having computed these metrics, we now compute mass or cell specific dark respiration rate as the ratio of the rate of O2 consumption and the biomass content at the time of the experiment (in dryweight or number of cells, respectively)
 
-```{r , echo = TRUE, message = FALSE, warning = FALSE, results = 'hide',eval=TRUE}
+```{r , echo = include_code, message = FALSE, warning = FALSE, results = 'hide',eval=TRUE}
 
 m_algae_O2cell <- c()
 n_algae_O2cell <- c()
@@ -375,7 +378,7 @@ Light extinction coefficients at 683 nm (sigma_683) and 880 nm (sigma_880) are c
 The calculation is based on the formula: OD = -log10(T) with T = exp(-sigmaMass*X*d) = exp(-signamCell*nCell*d).
 The factor (1/0.01) therefore represents the normalisation of optical density being measured in a 1 cm wide cuvette (d = 0.01 m).
 
-```{r , echo = TRUE, message = FALSE, warning = FALSE, results = 'hide',eval=TRUE}
+```{r , echo = include_code, message = FALSE, warning = FALSE, results = 'hide',eval=TRUE}
 # Calculation
 
 sigma_683_cell = log(10)*(1/0.01)*results_PhoCAssPaNS_df$OD683O2Cell/(results_PhoCAssPaNS_df$nAlgaeO2cell/V_cell) #m2/cell
@@ -395,7 +398,7 @@ results_PhoCAssPaNS_df$sigma880Mass <- sigma_880_mass
 
 Total light intensity absorbed, dry-weight or cell specific, is computed here (µmol/s/g DW or µmol/s/cell, respectively) assuming Beer-Lambert law in a cylindrical reactor.
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 
 results_PhoCAssPaNS_df$averageLightDensityDryweight <-
   results_PhoCAssPaNS_df$I0Reactor/(results_PhoCAssPaNS_df$reactorDepth*results_PhoCAssPaNS_df$dryWeight*1000)*
@@ -412,7 +415,7 @@ results_PhoCAssPaNS_df$averageLightDensityCell <-
 
 Variables related to cell division are calculated and appended to the main data frame below. Because cell division is calculated based on consecutive data using Euler method, cell specific data or protein specific data will be normalised using interval-averaged data ("MidInterval" vectors).
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 # Creation of mid interval data to compare growth rate with these quantities
 ## Cell count in the reactor
 aux <- dplyr::lag(results_PhoCAssPaNS_df$cellCount,9)
@@ -439,7 +442,7 @@ results_PhoCAssPaNS_df$divisionRate <- 1/results_PhoCAssPaNS_df$cellCountMidInte
 
 A second data frame is created which will serve to store the data generated in the analysis which are characteristic of a single reactor. This data frame will then serve for reactor specific analyses.
 
-```{r, echo = TRUE, message=FALSE, warning=FALSE, results='hide'}
+```{r, echo = include_code, message=FALSE, warning=FALSE, results='hide'}
 
 reactorPhoCAssPaNS_df <- 
   data.frame(concentrationClass = results_PhoCAssPaNS_df$concentrationClass[2:10],
@@ -451,7 +454,7 @@ reactorPhoCAssPaNS_df <-
 
 Parameters not measured or determined in separate experiments needed for the analysis are referenced in the following block.
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 
 # Photosynhtetic parameters values for non-nutrients starved microalgae
 ## Maximum specific rate of photosynthetic O2 productivity for C vulgaris NIES 227 under nutrient replete conditions (coefficient Pm, g O2/g DW/s)
@@ -476,7 +479,7 @@ alpha_PI <- K1_mass/Pm_0_exp
 
 The uncertainty value on individual measurements and propagation error analysis for basic variables included in the central data frame are referenced and computed in the following block.
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 # Direct relative error. Values given correspond to the 95% confidence interval
 ## Relative error on light intensity received by the reactors (%)
 I0Reactor_rel_error <- 0.075
@@ -556,7 +559,7 @@ results_PhoCAssPaNS_df$lambdaDarkRelError = sqrt((results_PhoCAssPaNS_df$Resp1Er
 
 Data from analyses performed on the stock solution were included in the initial, data table. This sample is not relevant for the analysis of the present study and is now removed.
 
-```{r , echo = TRUE, message=FALSE, warning=FALSE, results='hide'}
+```{r , echo = include_code, message=FALSE, warning=FALSE, results='hide'}
 results_PhoCAssPaNS_df <- subset(results_PhoCAssPaNS_df, sample != "Mother")
 ```
 
@@ -566,7 +569,7 @@ results_PhoCAssPaNS_df <- subset(results_PhoCAssPaNS_df, sample != "Mother")
 
 Pm coefficient is determined from least squared methods when comparing O2 production measured in the O2 cell and O2 theoretically produced according to the Equation presented in the manuscript.
 
-```{r, echo = TRUE , fig.height=4.5,fig.width=6.5, message = FALSE , warning = FALSE}
+```{r, echo = include_code , fig.height=4.5,fig.width=6.5, message = FALSE , warning = FALSE}
 # Options are available for the calculation
 ## option_plot_local: option to return the plot of the least square function
 option_plot_local = 0
@@ -859,7 +862,7 @@ mean(Pm_fit_vector,na.rm = TRUE)
 
 Reactor and biomass specific light intensity absorbed is computed as the averaged value over the full experiment for each experiment, and saved in the per reactor data frame reactorPhoCAssPaNS_df (µmol/s/g-DW and µmol/s/cell)
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 concentrationClassList = c("0.1 g.L-1","0.3 g.L-1","1.0 g.L-1")
 lightClassList = c("25%","50%","100%")
 
@@ -894,7 +897,7 @@ reactorPhoCAssPaNS_df$lightDensityCell_std = lightDensityCell_std
 
 The carbon fixed by the biomass during the experiment in the form of carbohydrate, lipids, proteins, the sum of the three, as well as the total carbon in the suspended phase are determined for each reactor. Yields are defined for each macromolecules, and the values are determined based on the previously determined pool biomass content, and biomass concentration in the reactors. Error analysis is also performed in the following paragraph.
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 # Carbon content in the carbohydrates (g C/g CHO)
 Y_C_CHO <- 0.439
 # Carbon content in the lipids (g C/g lipids)
@@ -955,7 +958,7 @@ results_PhoCAssPaNS_df$carbonFunctional_rel_error  <- carbonFunctional_rel_error
 
 ## Parameters for aestethics
 
-```{r , echo = TRUE, message=FALSE, warning=FALSE, results='hide'}
+```{r , echo = include_code, message=FALSE, warning=FALSE, results='hide'}
 shape_factor = factor(results_PhoCAssPaNS_df$sample)
 # Color factor
 color_factor = factor(results_PhoCAssPaNS_df$lightClass, levels = c("25%","50%","100%"))
@@ -968,7 +971,7 @@ reactorPhoCAssPaNS_df$lightClass <- color_factor
 
 ## Light supply analysis
 
-```{r, echo = TRUE, fig.width=6, fig.height=4.2}
+```{r, echo = include_code, fig.width=6, fig.height=4.2}
 
 plot_lightdensity_a <-
   ggplot(data = results_PhoCAssPaNS_df,
@@ -1011,7 +1014,7 @@ plot_lightdensity_b
 
 ### Dry weight:
 
-```{r echo = TRUE, message=FALSE, warning=FALSE, fig.height=4.5,fig.width=6, results='hide'}
+```{r echo = include_code, message=FALSE, warning=FALSE, fig.height=4.5,fig.width=6, results='hide'}
 
 plot_biomass_a <-
   ggplot(data = results_PhoCAssPaNS_df,
@@ -1030,13 +1033,13 @@ scale_shape_manual(values = c(21,23,24)) +
 
 ```
 
-```{r, ,fig.height=4.5,fig.width=5, echo = TRUE, warning=FALSE}
+```{r, ,fig.height=4.5,fig.width=5, echo = include_code, warning=FALSE}
 plot_biomass_a
 ```
 
 ### Cell count
 
-```{r, echo = TRUE, message=FALSE, warning=FALSE, results='hide'}
+```{r, echo = include_code, message=FALSE, warning=FALSE, results='hide'}
 
 plot_biomass_b <- ggplot(data = results_PhoCAssPaNS_df,
                          aes(x = day , y = cellCount*1000, color = lightClass, shape = concentrationClass)) +
@@ -1055,14 +1058,14 @@ plot_biomass_b <- ggplot(data = results_PhoCAssPaNS_df,
 
 ```
 
-```{r, echo = TRUE,fig.height=4.5,fig.width=6.5, warning=FALSE}
+```{r, echo = include_code,fig.height=4.5,fig.width=6.5, warning=FALSE}
 plot_biomass_b
 
 ```
 
 ### Biomass pigment
 
-```{r, echo = TRUE, results="hide"}
+```{r, echo = include_code, results="hide"}
 
 # Absolute concentrations----
 plot_chla_total <- ggplot(data = results_PhoCAssPaNS_df,
@@ -1117,12 +1120,12 @@ plot_pigment_total <- plot_chla_total_log + plot_chlb_total_log + plot_carot_tot
 
 ```
 
-```{r,  echo = TRUE , fig.height=5 , fig.width=17 , warning=FALSE}
+```{r,  echo = include_code , fig.height=5 , fig.width=17 , warning=FALSE}
 plot_pigment_total
 ```
 
 ### Final plot
-```{r, echo = TRUE, fig.width = 16, fig.height = 9}
+```{r, echo = include_code, fig.width = 16, fig.height = 9}
 # validationPlot_dryweight +
 #   theme(legend.position = "none") +
 #   validationPlot_cellCount + theme(legend.position = "none") +
@@ -1171,7 +1174,7 @@ finalBiomassPlot <-
 
 ### Pm and lambda plots
 
-```{r, echo = TRUE,warning=FALSE}
+```{r, echo = include_code,warning=FALSE}
 
 plot_Pm_tern <- ggtern(data = subset(results_PhoCAssPaNS_df,PmMass < 1),
                        aes(y=totalFAME,x=totalSugars,z=tnSpecific*factor_protein)) + 
@@ -1254,7 +1257,7 @@ plot_darkRespiration_tern <-  ggtern(data = results_PhoCAssPaNS_df,
 
 ```
 
-```{r , echo = TRUE,fig.width=6,fig.height=6,warning=FALSE}
+```{r , echo = include_code,fig.width=6,fig.height=6,warning=FALSE}
 plot_Pm_tern
 plot_photoRepsiration_tern
 plot_darkRespiration_tern
@@ -1293,7 +1296,7 @@ results_PhoCAssPaNS_df$functionalPool <- functional_pool
 
 We here Verify the hypothesis that the rate of protein quota decrease is linked to global light irradiance in the reactor
 
-```{r, echo = TRUE,fig.height=5,fig.width=7}
+```{r, echo = include_code,fig.height=5,fig.width=7}
 
 
 # We first determine a rate of decrease for protein content in each reactor
@@ -1403,7 +1406,7 @@ protein_quota_deg_rate_matrix <-
 
 #### Analysis of protein final quota
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 # Calculation of the final protein quota (mass and cell specific)
 # Initialisation of the vectors
 final_prot_quota <- rep(NA,9)
@@ -1434,7 +1437,7 @@ sd(final_prot_cell_quota)
 
 The protein content evolution is now analysed in term of global concentration in the reactor.
 
-```{r, echo = TRUE,fig.height=5,fig.width=7}
+```{r, echo = include_code,fig.height=5,fig.width=7}
 
 
 # Initialisation
@@ -1529,7 +1532,7 @@ protein_global_deg_rate_matrix <-
 
 #### Carbohydrate quota quantitative analysis
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 
 # Max CHO quota and Standard error associated
 max(results_PhoCAssPaNS_df$totalSugars,na.rm = TRUE)
@@ -1545,7 +1548,7 @@ results_PhoCAssPaNS_df$totalSugarsCell_rel_error[which(results_PhoCAssPaNS_df$to
 
 The plots of biomass content in proteins, lipids, and carbohydrates, in terms of global concentration in the reactor, mass quota, and cell quota are all produced below. They are then merged in a single ggplot object.
 
-```{r,  echo = TRUE}
+```{r,  echo = include_code}
 
 plot_total_content_FAME <- ggplot(data = results_PhoCAssPaNS_df,
                                   aes(x = day , y = totalFAME*dryWeight,
@@ -1726,7 +1729,7 @@ plot_global_content_total <-
 
 ```
 
-```{r,  echo = TRUE , fig.height=14 , fig.width=17 , warning=FALSE}
+```{r,  echo = include_code , fig.height=14 , fig.width=17 , warning=FALSE}
 plot_global_content_total
 ```
 
@@ -1734,7 +1737,7 @@ plot_global_content_total
 
 The last value of functional pool mass quota is extracted for each reactor below. The link between this value and the light density in the reactor is then investigated.
 
-```{r,echo = TRUE, fig.width=6.5,fig.height=5}
+```{r,echo = include_code, fig.width=6.5,fig.height=5}
 
 # Initialisation
 functional_pool_last <- rep(NA,9)
@@ -1784,7 +1787,7 @@ summary(lm_local)
 
 ### Light distribution and O2 productivity in the e-flasks
 
-```{r Modelling light distribution and O2 productivity in the e-flasks, echo = TRUE,warning=FALSE}
+```{r Modelling light distribution and O2 productivity in the e-flasks, echo = include_code,warning=FALSE}
 # Creation of meshed elementary data in the volume of e-flask
 ## Geometric data
 ### r_erlen: radius of the basis of the e-flask (m)
@@ -2038,7 +2041,7 @@ scale_shape_manual(values = c(21,23,24)) +
 plot_functionalCarbon_fixed_exp_vs_theo_gross
 ```
 
-```{r, echo = TRUE,warning=FALSE,fig.width=7,fig.height=5}
+```{r, echo = include_code,warning=FALSE,fig.width=7,fig.height=5}
 
 summary(lm(carbonFunctional ~ functionalCarbonFixedGrossTheo + 0, data = results_PhoCAssPaNS_df))
 
@@ -2149,7 +2152,7 @@ ggplot(data = reactorPhoCAssPaNS_df,aes(x = lightDensityCell,y = specificDecayRa
 
 ### Per reactor plot of engodenous respiration rate determination
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 # Scaled boundary of the plots
 ## We set the minimum and maximum values for all plots in order to have coherent and comparable scales between reactors
 y_min <- -0.6
@@ -2382,7 +2385,7 @@ plot_carbon_biomass_all <- plot_carbon_biomass_LoCoLoLi + theme(legend.position 
 
 ```
 
-```{r, echo = TRUE,fig.width=10,fig.height=10,warning=FALSE}
+```{r, echo = include_code,fig.width=10,fig.height=10,warning=FALSE}
 plot_carbon_biomass_all
 ```
 
@@ -2392,7 +2395,7 @@ A predictive model for the specific photosynthetic rate of O2 production (Pm coe
 
 ### First Spearman rank analysis
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 # Results data frame is replicated so potential transforamtions on it can be implemented prior to generalized Spearman rank correlation analysis 
 lm_PhoCAssPaNS <- results_PhoCAssPaNS_df
 
@@ -2563,7 +2566,7 @@ ggplot(data = Pm_model_data,aes(x = cnRatio , y = PmMass )) +
 
 Spearman rank analysis is now repeated on the model residuals.
 
-```{r, echo = TRUE, fig.width= 5, fig.height= 5}
+```{r, echo = include_code, fig.width= 5, fig.height= 5}
 # Preparation
 lm_PhoCAssPaNS <- results_PhoCAssPaNS_df
 lm_PhoCAssPaNS <- lm_PhoCAssPaNS[is.na(lm_PhoCAssPaNS$PmMassModelResiduals) == 0,]
@@ -2635,7 +2638,7 @@ A predictive modelling of the light extinction coefficient at 683 nm (sigma_683)
 
 The same method as developed for Pm coefficient was implemented for sigma_683
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 
 # Initialisation
 lm_PhoCAssPaNS <- results_PhoCAssPaNS_df
@@ -2757,7 +2760,7 @@ sum(is.na(results_PhoCAssPaNS_df$sigma683Mass) == 0)
 
 The residuals from the previous fit are now analysed in a repeated Spearman rank analysis
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 
 # Residuals determination
 predicted_sigma_local <- 
@@ -2863,7 +2866,7 @@ ggplot(data = results_PhoCAssPaNS_df,
 
 Based on all the analysis, we develop the following model sigma683Mass \~ sigmaMax*totalProtein/(Kp+totalProtein) - lambda_CHO*globalCHO Where - totalProtein is the protein quota (massic) - globalCHO is the total CHO concentration in the reactor - sigmaMax, lambda_CHO, Kp are fitting parameters
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 
 
 nls_sigma683Mass <- nls(sigma683Mass ~ a*totalProtein/(c+totalProtein) -
@@ -2916,7 +2919,7 @@ sum(is.na(results_PhoCAssPaNS_df$sigma683Mass) == 0)
 
 ### Spearman rank analysis of the second residuals
 
-```{r, echo = TRUE, fig.height=5,fig.width=6.5}
+```{r, echo = include_code, fig.height=5,fig.width=6.5}
 # Determination of residuals
 residuals_sigma683 <- results_PhoCAssPaNS_df$sigma683Mass - results_PhoCAssPaNS_df$predictedSigma683Mass
 results_PhoCAssPaNS_df$residualsSigma683 <- residuals_sigma683
@@ -2981,7 +2984,7 @@ print(local_matrix)
 
 ```
 
-```{r, echo = TRUE, fig.height=5,fig.width=6.5}
+```{r, echo = include_code, fig.height=5,fig.width=6.5}
 
 ggplot(data = results_PhoCAssPaNS_df,
        aes(x = totalSugarsCell ,
@@ -3032,7 +3035,7 @@ ggplot(data = results_PhoCAssPaNS_df,
 
 The fit the sugar cell appear to "normalize" a significant outlier, but is redundant witht the introduction of carbohydrate global concentration. A new fit is therefore attempted with the following model: sigma683Mass \~ sigmaMax*totalProtein/(Kp+totalProtein) - lambda_CHO*totalSugarsCell Where - totalProtein is the protein quota (massic) - totalSugarsCell is the Carbohydrates cell quota - sigmaMax, lambda_CHO, Kp are fitting parameters
 
-```{r, echo = TRUE, fig.height=5,fig.width=7}
+```{r, echo = include_code, fig.height=5,fig.width=7}
 
 
 nls_sigma683Mass <- nls(sigma683Mass ~ a*totalProtein/(c+totalProtein) -
@@ -3085,7 +3088,7 @@ sum(is.na(results_PhoCAssPaNS_df$sigma683Mass) == 0)
 
 ### Spearman rank analysis of the first residuals (2nd strategy)
 
-```{r, echo = TRUE, fig.height=5,fig.width=7}
+```{r, echo = include_code, fig.height=5,fig.width=7}
 residuals_sigma683 <- results_PhoCAssPaNS_df$sigma683Mass - results_PhoCAssPaNS_df$predictedSigma683Mass
 results_PhoCAssPaNS_df$residualsSigma683 <- residuals_sigma683
 
@@ -3150,7 +3153,7 @@ print(local_matrix)
 
 The following variables are still evidenced significantly correlated to the current model residuals (removing least relevant variables): - carbonFunctional (p = 0.0004244) - dryWeight (p = 0.0005400) - carbonFixedCHOExp (p = 0.0005889) - cellCount (p = 0.0006839)
 
-```{r, echo = TRUE, fig.height=5,fig.width=6.5}
+```{r, echo = include_code, fig.height=5,fig.width=6.5}
 
 ggplot(data = results_PhoCAssPaNS_df,
        aes(x = carbonFunctional ,
@@ -3204,7 +3207,7 @@ None of the relationship tested above were deemed mathematically significant eno
 
 Based on all the analysis, we develop the following model sigma683Mass \~ sigmaMax*totalProtein/(Kp+totalProtein) - lambda_CHO*totalSugarsCell Where - totalProtein is the protein quota (massic) - totalSugarsCell is the Carbohydrates cell quota - sigmaMax, lambda_CHO, Kp are fitting parameters
 
-```{r, echo = TRUE,fig.height=5,fig.width=7}
+```{r, echo = include_code,fig.height=5,fig.width=7}
 
 nls_sigma683Mass <- nls(sigma683Mass ~ a*totalProtein/(c+totalProtein) -
                           b*totalSugarsCell,
@@ -3351,7 +3354,7 @@ summary(a)
 
 We assume based on global observations that a maximum cellular rate of lipid productivity exists. We are therefore aiming to determine a rate of cellular lipid production P_L such that dL/dt = P_L*N(t) where N(t) is the cell concentration and L is the total lipid concentration in the reactor. Because significant uncertainty exist in our data points, the variables were first smoothed (loess method) prior to study the ratio 1/N*dL/dt. It must be noted that P_L is expected to be fleetingly reaching a maximum value but would remain below most of the experiment as lipid accumulation is limited by the photosynthetic activity of the microalgae.
 
-```{r, echo = TRUE,fig.height=5,fig.width=8}
+```{r, echo = include_code,fig.height=5,fig.width=8}
 
 # We define a mock vector of time on which the data smoothing will be performed
 mock_day <- seq(0,16,0.1)
@@ -3436,7 +3439,7 @@ sd(as.matrix(df_final[df_final[,1] < 2,c(2,3,6)]) , na.rm = TRUE)
 
 Droop model was implemented for each reactor due to being an expected model of cell division under N starvation.
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 
 # Vector for each parameter recovered from Droop model for each reactor are initialized
 µ_max <- rep(NA,9)
@@ -3483,7 +3486,7 @@ Unstaisfying Droop but exponential pattern noticeable.
 
 ### Spearman rank analysis
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 # Results data frame is replicated so potential transforamtions on it can be implemented prior to generalized Spearman rank correlation analysis 
 lm_PhoCAssPaNS <- results_PhoCAssPaNS_df
 
@@ -3569,7 +3572,7 @@ print(local_matrix)
 
 Due to unstatisfying fit, the model was reevaluated based on observation leading to the expression of a rate of division in the form of µ = µ_max\*exp(-q_critic/qP) where µ is the division rate, qp is protein cell quota, q_critic is a characteristic protein cell quota and µ_max is a theoretical maximum cell division rate. µ_max and q_critic are paramters determined through fitting
 
-```{r, echo = TRUE, fig.width = 5 , fig.height= 5}
+```{r, echo = include_code, fig.width = 5 , fig.height= 5}
 
 # Intialisation of vectors determined
 µ_max <- rep(NA,9)
@@ -3668,7 +3671,7 @@ sd(reactorPhoCAssPaNS_df$qCriticExp)/3
 
 We now plot the results from the cell division rate analysis in order to determine a potential link between light density in the reactor on the division characteristic cell protein quota
 
-```{r, echo = TRUE, message=FALSE, warning=FALSE, results='hide', fig.width= 1.3*5.3, fig.height=1.3*4}
+```{r, echo = include_code, message=FALSE, warning=FALSE, results='hide', fig.width= 1.3*5.3, fig.height=1.3*4}
 
 ggplot(data = reactorPhoCAssPaNS_df, aes(x = lightDensity, y = qCriticExp)) +
   geom_smooth(method = "lm") +
@@ -3696,7 +3699,7 @@ beta_qp_char_cellDiv = a$coefficients[1]
 
 The same is now done to determine a potential link between light density in the reactor on the theoretical maximum cell division rate
 
-```{r, echo = TRUE, message=FALSE, warning=FALSE, results='hide', fig.width= 1.1*5.3, fig.height=1.1*4}
+```{r, echo = include_code, message=FALSE, warning=FALSE, results='hide', fig.width= 1.1*5.3, fig.height=1.1*4}
 
 
 ggplot(data = reactorPhoCAssPaNS_df, aes(x = lightDensity, y = µmExp, colour = lightClass,shape = concentrationClass)) +
@@ -3718,7 +3721,7 @@ ggplot(data = reactorPhoCAssPaNS_df, aes(x = lightDensity, y = µmExp, colour = 
 
 The ratio between dryweight concentration and total functional carbon contained in the biomass is investigated below.
 
-```{r, echo = TRUE, fig.height=5.5, fig.width=7}
+```{r, echo = include_code, fig.height=5.5, fig.width=7}
 
 local_lm <- lm(dryWeight ~ carbonFunctional + 0, data = results_PhoCAssPaNS_df)
 
@@ -3762,7 +3765,7 @@ if (lastSimulation == 0){
 
 ## Initialisation variables
 
-```{r , echo = TRUE}
+```{r , echo = include_code}
 
 # General parameters------------------------------------------------------------
 
@@ -3870,7 +3873,7 @@ matrix_volume_change <- matrix(c(c(0.75,1.75,3.75,7.75,9.75,13.75,15.75),
 
 ## Loop of experiment simulation
 
-```{r, echo = TRUE, fig.width=5.5, fig.height=4.5}
+```{r, echo = include_code, fig.width=5.5, fig.height=4.5}
 # A list is created to save the data frame of the results of the simulation for each reactor (list_simulation)
 list_simulation <- list()
 
@@ -4326,7 +4329,7 @@ for (i_concentration in (1:3)){
 
 For each reactor, predicted data are extracted to correspond to each measured data point. To achieve so, the time step included to the model which is closest to each given measurement is identified and the data for each variable of this time step is then collected from the predicted data base. The predicted results corresponding to each date of the measured data hence obtained are appended to the central data frame.
 
-```{r , echo = TRUE}
+```{r , echo = include_code}
 
 
 for (i_val in (1:nrow(results_PhoCAssPaNS_df))){
@@ -4384,7 +4387,7 @@ for (i_val in (1:nrow(results_PhoCAssPaNS_df))){
 
 FOr each variable predicted, measured vs predicted values are plotted.
 
-```{r, echo = TRUE, fig.width = 6, fig.height = 4.5}
+```{r, echo = include_code, fig.width = 6, fig.height = 4.5}
 validationPlot_dryweight <-
   ggplot(data = results_PhoCAssPaNS_df, aes(x = predicted_xAlgae, y = dryWeight)) +
     geom_point(aes(color = lightClass, shape = concentrationClass), size = 3,stroke = 1.25) +
@@ -4634,7 +4637,7 @@ validationPlot_totalLipids
 
 ```
 
-```{r, echo = TRUE, fig.width = 12, fig.height = 10}
+```{r, echo = include_code, fig.width = 12, fig.height = 10}
 
 ## Putting the legend in common (based on https://stackoverflow.com/questions/13649473/add-a-common-legend-for-combined-ggplots )
 
@@ -4663,7 +4666,7 @@ mylegend <- g_legend(validationPlot_totalLipids)
 
 ## R2 of main metrics
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 # Dryweight
 
 
@@ -4731,7 +4734,7 @@ if (lastSimulation == 0){
 
 ### Calculation
 
-```{r, echo = TRUE,fig.height=6, fig.width=8}
+```{r, echo = include_code,fig.height=6, fig.width=8}
 
 
 # Determining a rate of decrease for pigment content specifically to biomass dry-weight concentration
@@ -4887,7 +4890,7 @@ pig_deg_rate_matrix <-
 
 ### Plot development
 
-```{r, echo = TRUE}
+```{r, echo = include_code}
 
 # Plot for chlorophyll-b
 plot_chlb_deg <- 
@@ -4954,7 +4957,7 @@ plot_pigment_total_deg <-
 
 ### Final plot
 
-```{r, echo = TRUE,fig.height=10, fig.width=12}
+```{r, echo = include_code,fig.height=10, fig.width=12}
 
   
 
