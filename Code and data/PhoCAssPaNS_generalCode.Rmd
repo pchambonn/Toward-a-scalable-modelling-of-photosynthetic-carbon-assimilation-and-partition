@@ -4721,6 +4721,871 @@ MRE_CHO
 R2_cellcount
 
 ```
+# Sensitivity analysis
+
+## Initialisation and sensitivity loop
+
+```{r , echo = TRUE}
+
+# Parameter table
+
+# We create a table of parameters "table_parameters" for which each line correpsond to a parameter which will be varied individually for sensitivity analysis. The first column corresponds to the central or base value, and the second and third columns respectively correspond to the lower and higher uncertainty values (when varying of one standard deviation if the uncertainy is based on regression or statistical analysis).
+
+# The order of the parameters for each line is as follows:
+  # n_iter <=> 1
+  # n_mesh <=> 2
+  # d_reactor <=> 3
+  # r_reactor <=> 4
+  # angle_eflask <=> 5
+  # Y_X_C <=> 6
+  # Y_C_L <=> 7
+  # Y_C_P <=> 8
+  # lambda_decay <=> 9
+  # Pm_0_exp <=> 10
+  # cnRatio_char <=> 11
+  # gamma_Pm <=> 12
+  # sigma_max <=> 13
+  # K_qP <=> 14
+  # lambda_CHO <=> 15
+  # µ_max_exp <=> 16
+  # alpha_qp_char_cellDiv <=> 17
+  # beta_qp_char_cellDiv <=> 18
+  # q_CHO_cell_max_global <=> 19
+  # p_L_cell_max <=> 20
+  # I0 <=> 21
+  # Volume_change <=> 22
+  # alpha_PI <=> 23
+  # K2_mass <=> 24
+
+table_parameters = matrix(data = c(200	,	100	,	400	,
+                                   50	,	25	,	100	,
+                                   0.0556	,	0.054181633	,	0.057018367	,
+                                   0.06	,	0.058469388	,	0.061530612	,
+                                   1.396263	,	1.360644046	,	1.431881954	,
+                                   1.92019	,	1.89019	,	1.95019	,
+                                   0.8522	,	0.85165886	,	0.85274114	,
+                                   0.6579	,	0.657482222	,	0.657899735	,
+                                   -1.440638E-07 ,	-1.979990E-07 ,	-9.012861E-08,
+                                   0.0009103757	,	0.000878376	,	0.000942376	,
+                                   2.746015	,	2.43	,	3.07	,
+                                   -2.884479	,	-3.01	,	-2.75	,
+                                   0.9564742	,	0.927	,	0.985	,
+                                   0.1424641	,	0.13	,	0.152	,
+                                   6.624711E-11	,	5.21907E-11	,	8.02596E-11	,
+                                   4.253194E-05	,	3.7963E-05	,	4.69907E-05	,
+                                   -4.526242E-13	,	-7.97E-13	,	-1.09E-13	,
+                                   2.253142E-11	,	1.95E-11	,	2.55E-11	,
+                                   4.470671E-12	,	4.23E-12	,	4.71E-12	,
+                                   3.29502E-17	,	8.5E-13	,	4.85E-12	,
+                                   2.20E+02	,	1.98E+02	,	2.42E+02	,
+                                   1	,	0.95	,	1.05	,
+                                   171885.4	,	166706.8014	,	177063.9986	,
+                                   9.593525	,	8.8804	,	10.24),
+                          ncol=3,byrow = TRUE)
+
+# A table to register the results is created
+
+table_results_SA <- matrix(NA, nrow = 49, ncol = 6)
+
+# The sensitivity calculation loop is now implemented. For each turn of the loop, a list of parameter is created in the order previously given extracted from table_parameters matrix. This list of parameters present the central value for all parameters with one parameter being varied alternatively to its lower uncertainty and to its upper uncertainty. The first loop is carried out implementing only central values.
+
+for(i_sensitivity in (1:49)){
+  # Selection of parameter list
+  local_parameters_list <- table_parameters[,1]
+  
+  if (i_sensitivity >= 2){
+    local_parameters_list[floor(i_sensitivity/2)] <- table_parameters[floor(i_sensitivity/2),2 + i_sensitivity %% 2]
+  }
+
+
+  # General parameters------------------------------------------------------------
+  
+  n_iter = local_parameters_list[1] # number of iterations
+  n_mesh = local_parameters_list[2] # mesh subdivision for discrete modelling of E-flasks
+  dt = 16/n_iter # time step (day)
+  simulation_df <- data.frame(time = seq(0,n_iter*dt,dt))
+  
+  
+  # Operative parameters
+  ## d_reactor : initial reactor depth (m)
+  ## r_reactor : reactor radius (m)
+  ## angle_eflask : inclination of the side of the erlen (radians)
+    
+  d_reactor = local_parameters_list[3]
+  r_reactor = local_parameters_list[4]
+  angle_eflask = local_parameters_list[5]
+  
+  # Initial reactor volume is computed (V_reactor_0, L)
+  V_reactor_0 = 1/3*pi*r_reactor^3*tan(angle_eflask)*(1-(1-d_reactor/(r_reactor*tan(angle_eflask)))^3)*1000
+  
+  # Yield parameters
+  ## Y_CHO_O2: yield of glucose per production of O2 during phtotsynthesis (g CHO/g O2)
+  ## Y_C_CHO: content of carbon in biomass carbohydrates (g C/g CHO)
+  ## Y_X_C : biomass to carbon yield during biomass growth (g DW/g C) 
+  ## Y_C_L : content of carbon in  biomass lipids (g C/g Lipids)
+  ## Y_C_P : content of carbon in  biomass proteins (g C/g Proteins)
+  
+  Y_CHO_O2 <- 4/32*180/24
+  Y_C_CHO <- 0.439
+  Y_X_C <-  local_parameters_list[6]
+  Y_C_L <- local_parameters_list[7]
+  Y_C_P <- local_parameters_list[8]
+  
+  
+  # Cell parameters
+  ## This regroups all model constants necessary for predictions
+  ### lambda_decay: decay rate (g C/(g DW.s))
+  ### Pm_0 : Theoretical maximum specific photosynthetic rate of O2 production (g 02/(g DW.s.[g N/g C]))
+  ### cnRatio_char : characteristic C:N ratio of the decrease of photosynthetic activity for increasing C:N ratio (g C/(g N))
+  ### sigma_max : max light extinction coefficient (m2/g DW)
+  ### K_qp : affinity constant of light extinction coefficient toward protein mass quota (g P/g cell)
+  ### lambda_CHO: carbohydrates cell quota characteristic for light absorption (g CHO/cell)
+  ### µ_max_exp : maximum cell division rate (s-1)
+  ### alpha_qp_char_cellDiv: slope of the linear regression between the characteristic protein quota for cell division and the light density in the reactor (g P.gDW.S/(cell.µmol))
+  ### beta_qp_char_cellDiv : intercept of the linear regression between the characteristic protein quota for cell division and the light density in the reactor (g P.cell-1)
+  ### q_CHO_cell_max_global : maximum carbohydrate cell quota prior to conversion of carbon to lipids (g CHO/cell)
+  ### p_L_cell_max : maximum rate of production of lipid for a single cell (g Lipid/cell/s)
+  
+  lambda_decay = local_parameters_list[9]
+  Pm_0_exp = local_parameters_list[10]
+  cnRatio_char = local_parameters_list[11]
+  gamma_Pm = local_parameters_list[12]
+  sigma_max = local_parameters_list[13]
+  K_qP = local_parameters_list[14]
+  lambda_CHO = local_parameters_list[15]
+  µ_max_exp = local_parameters_list[16]
+  alpha_qp_char_cellDiv = local_parameters_list[17]
+  beta_qp_char_cellDiv = local_parameters_list[18]
+  q_CHO_cell_max_global = local_parameters_list[19]
+  p_L_cell_max = local_parameters_list[20]
+  
+  
+  
+  # Initialization tables
+  
+  
+  
+  ## The cell metabolic state and the culture conditions are initialized. 
+  ### q_P_0 : Initial protein quota (g Protein/g dryweight)
+  ### q_L_0 : Initial lipid quota (g Lipids/g dryweight)
+  ### q_CHO_0 : Initial carbohydrates quota (g Carbohydrates/g dryweight)
+  ### N_0 : Initial cell count (cell/L)
+  ### X_0 : Initial dry weight (g/L)
+  
+  q_P_0 = 0.69
+  q_L_0 = 0.10
+  q_CHO_0 = 0.13
+  
+  N_0_table = c(2.49*10^9 , 7.47*10^9 , 2.73*10^10)
+  X_0_table = c(0.101 , 0.303 , 1.11)
+  
+  
+  ## Light conditions initialization
+  ### Global initial light intensity (I0, µmol/m2/s)
+  I_0 = local_parameters_list[21]
+  ### The light/dark period is determined for the corresponding lines of the time vector (day_vector, binary =1 if day, = 0 if night)
+  day_vector <- rep(1,nrow(simulation_df))
+  day_vector[(((simulation_df$time - floor(simulation_df$time)) < 11/24) & ((simulation_df$time - floor(simulation_df$time)) > 7/24))] <- 0
+  ### Matrix of light intensity (I_0_table): a matrix is created gathering light intensity for the trhee different types of reactor (75% light intensity filter, 50% light intensity filter, no filter) including the dark/light period.
+  I_O_vector <- day_vector*I_0
+  I_0_table <- matrix(c(0.25*I_O_vector, 0.5*I_O_vector , I_O_vector), ncol = 3)
+  
+  ## Matrix of the volume of the reactor
+  ### V_reactor_0_table: vector of volume variations according to time, initiliazed with the initial value V_reactor_0
+  ### The volume variations due to sampling must be accounted for in order to recreate the experimental conditions. The values reported on each sampling and corresponding dates from the start are gathered in a matrix (matrix_volume_change)
+  
+  V_reactor_0_table <- c(V_reactor_0,rep(NA,nrow(simulation_df)-1))
+  matrix_volume_change <- local_parameters_list[22]*
+    matrix(c(c(0.75,1.75,3.75,7.75,9.75,13.75,15.75),
+             c(0.470,0.390,0.310,0.230,0.150,NA,NA),
+             c(0.500,0.450,0.400,0.350,0.300,0.220,0.165),
+             c(0.500,0.450,0.400,0.350,0.300,0.250,0.200)),
+           ncol = 4)
+  
+  alpha_PI = local_parameters_list[23]
+  K2_mass = local_parameters_list[24]
+  
+  factor_protein <- 5.04
+  
+  ## Loop of experiment simulation: the loop performed for model fitness determination is now reproduced for the new values of the parameters.
+  
+  # A list is created to save the data frame of the results of the simulation for each reactor (list_simulation)
+  list_simulation <- list()
+  
+  # A loop is now performed per reactor
+  for (i_concentration in (1:3)){
+    for (j_light in (1:3)){
+  
+      # Initialisation of the cell count and dryweight concentration
+      N_0 = N_0_table[i_concentration]
+      X_0 = X_0_table[i_concentration]
+        
+      # Creation of the data frame in which will be reported all the current loop results
+      ## The data frame initially only contains the time vector on which data points will be determined
+      simulation_df <- data.frame(time = seq(0,n_iter*dt,dt))
+    
+      # Initialisation of the data set
+      ## Needed variables that will be included in the data frame for the current loop are created and initialised according to the real experimental data
+      ## Incident light intensity (the values over the complete experiment are directly implemented)
+      simulation_df$I0 <- I_0_table[,j_light]
+      ## Dry-weight concentration (g/L)
+      simulation_df$xAlgae <- c(X_0,rep(NA,nrow(simulation_df)-1))
+      ## Algae cell count (cell/L)
+      simulation_df$nAlgae <- c(N_0,rep(NA,nrow(simulation_df)-1))
+      ## Proteins mass quota (g Proteins/g dry-weight)
+      simulation_df$q_P <- c(q_P_0,rep(NA,nrow(simulation_df)-1))
+      ## Lipids mass quota (g Lipids/g dry-weight)
+      simulation_df$q_L <- c(q_L_0,rep(NA,nrow(simulation_df)-1))
+      ## Carbohydrates mass quota (g Carbohydrates/g dry-weight)
+      simulation_df$q_CHO <- c(q_CHO_0,rep(NA,nrow(simulation_df)-1))
+      ## Proteins cell quota (g Proteins/cell)
+      simulation_df$q_P_cell <- c(q_P_0*X_0/N_0,rep(NA,nrow(simulation_df)-1))
+      ## Lipids cell quota (g Lipids/cell)
+      simulation_df$q_L_cell <- c(q_L_0*X_0/N_0,rep(NA,nrow(simulation_df)-1))
+      ## Carbohydrate cell quota (g Carbohydrates/cell)
+      simulation_df$q_CHO_cell <- c(q_CHO_0*X_0/N_0,rep(NA,nrow(simulation_df)-1))
+      
+      # The rest of the variables needed in the simulation but which are not initialised according to experimental measurements are also included.
+      ## C:N ratio in the biomass (g C/g N)
+      simulation_df$cnRatio <- rep(NA,nrow(simulation_df))
+      ## Mass specific light extinction coefficient (m2/g dry-weight)
+      simulation_df$sigma683Mass <- rep(NA,nrow(simulation_df))
+      ## Specific maximum photosynthetic rate of O2 production (g 02/g dry-weight/s)
+      simulation_df$Pm <- rep(NA,nrow(simulation_df))
+      ## Light density in the reactor (µmol/(gDW.S))
+      simulation_df$lightDensity <- rep(NA,nrow(simulation_df))
+      
+      # Loop of calculation
+      for (i_simul in (1:(n_iter))){
+        # Calculation initilalization for the current time step
+        ## Initialisation from previous determination
+        q_P_local = simulation_df$q_P[i_simul]
+        q_L_local = simulation_df$q_L[i_simul]
+        q_CHO_local = simulation_df$q_CHO[i_simul]
+        q_P_cell_local = simulation_df$q_P_cell[i_simul] # g Prot/cell
+        q_CHO_cell_local = simulation_df$q_CHO_cell[i_simul] # g CHO/cell
+        q_L_cell_local = simulation_df$q_L_cell[i_simul] # g Lip/cell
+        I0_local <- simulation_df$I0[i_simul] # µmol/m2/s
+        X_algae_local <- simulation_df$xAlgae[i_simul] #g/L
+        N_algae_local <- simulation_df$nAlgae[i_simul] #cell/L
+        
+        ## Volume calculation
+        ### The current volume (V_reactor_local) is determined by comparing the current time to the time of volume change in the reference matrix
+        ### Volume change from previous time step is also calculated
+        if (simulation_df$time[i_simul] < matrix_volume_change[1,1]){
+          V_reactor_local <- V_reactor_0
+          delta_V_local <- 0
+        }else{
+          V_reactor_old <- V_reactor_local
+          V_reactor_local <- matrix_volume_change[max(which(matrix_volume_change[,1] < simulation_df$time[i_simul])),i_concentration + 1]
+          # We try to find the index of matrix_volume_change corresponding to the actual volume
+          delta_V_local <- V_reactor_local - V_reactor_old
+          if (is.na(V_reactor_local)){
+            delta_V_local <- 0
+            V_reactor_local <- V_reactor_0
+          }
+        }
+        ## Reactor depth of the current time is computed from the volume determined
+        reactor_depth_local <- r_reactor*tan(angle_eflask) - 
+          ((r_reactor*tan(angle_eflask))^3 -
+             3/pi*(V_reactor_local/1000)*(tan(angle_eflask))^2)^(1/3)
+    
+        # The time step is computed for Euler-type calculations
+        dt_local <- (simulation_df$time[i_simul+1] - simulation_df$time[i_simul])*24*3600 # into seconds
+        
+        ## Initialisation of variiables from model equations 
+        cn_ratio_local = (Y_C_CHO*q_CHO_local + Y_C_P*q_P_local + Y_C_L*q_L_local)/(1/factor_protein*q_P_local)
+        # Pm_local = Pm_0*exp(-cn_ratio_local/cnRatio_char)
+        Pm_local = Pm_0_exp*(cn_ratio_local/cnRatio_char)^(gamma_Pm)
+        sigma683Mass_local = sigma_max*q_P_local/(K_qP+q_P_local) - q_CHO_cell_local/lambda_CHO
+        lightDensity_local = I0_local/(reactor_depth_local*X_algae_local*1000)*
+          (1 - exp(-sigma683Mass_local*X_algae_local*1000*reactor_depth_local)) # µmol/g/s
+  
+          
+        ## Implementation in the data frame of the modeled variables computed for the current time step
+        simulation_df$sigma683Mass[i_simul] <- sigma683Mass_local
+        simulation_df$Pm[i_simul] <- Pm_local
+        simulation_df$cnRatio[i_simul] <- cn_ratio_local
+        simulation_df$lightDensity[i_simul] <- lightDensity_local
+          
+        # Calculation of carbon absorbed on the current time step----------------- 
+        
+        eflask_base_tensor = array(data = rep(NA,(n_mesh+1)^3), dim = c(n_mesh+1,n_mesh+1,n_mesh+1))
+        
+        z_coordinates = seq(0,reactor_depth_local,reactor_depth_local/n_mesh)
+        teta_coordinates = seq(0,2*pi,2*pi/n_mesh)
+        r_coordinates <- seq(0,r_reactor - reactor_depth_local/tan(angle_eflask),(r_reactor - reactor_depth_local/tan(angle_eflask))/n_mesh)
+          
+        r_coordinates_tensor <- eflask_base_tensor
+        teta_coordinates_tensor <- eflask_base_tensor
+        z_coordinates_tensor <- eflask_base_tensor
+      
+        for (i in 1:(n_mesh + 1)){
+          for (j in 1:(n_mesh + 1)){
+            for (k in 1:(n_mesh + 1)){
+              # Assigning coordinates for each point inside the volume of the e-flask
+              r_seq <- seq(0,r_reactor - (reactor_depth_local - z_coordinates[k])/tan(angle_eflask),(r_reactor - (reactor_depth_local - z_coordinates[k])/tan(angle_eflask))/n_mesh)
+              r_coordinates_tensor[i,j,k] <- r_seq[i]
+              teta_coordinates_tensor[i,j,k] <- teta_coordinates[j]
+              z_coordinates_tensor[i,j,k] <- z_coordinates[k]
+            }
+          }
+        }
+        
+        ## Tensor for the corresponding coordinates are created for local light intensity (I_distribution_local) and local O2 photosynthetic production (P_O2_spec_local)
+        I_distribution_local <- eflask_base_tensor
+        P_O2_spec_local <- eflask_base_tensor
+  
+        ## Local light intensity determination
+        for (iv in 1:(n_mesh)){
+          for (jv in 1:(n_mesh)){
+            for (kv in 1:(n_mesh)){
+              
+              # local point coordinates based on the middle point between consecutive coordinates
+              r_local = (r_coordinates_tensor[iv,jv,kv] + r_coordinates_tensor[iv+1,jv,kv])/2
+              teta_local = (teta_coordinates_tensor[iv,jv,kv] + teta_coordinates_tensor[iv,jv+1,kv])/2
+              z_local = (z_coordinates_tensor[iv,jv,kv] + z_coordinates_tensor[iv,jv,kv+1])/2
+              
+              # Depth from the top of the e-flask vertically to the point (rk : positive toward the bottom)
+              r_lim <- r_reactor - reactor_depth_local/tan(angle_eflask) # Limit of the "non conical" part of the broth
+              if (r_local <= r_lim){
+                z_s <- z_local
+              }else{
+                z_s <- z_local - (r_local - r_lim)*tan(angle_eflask)
+              }
+              I_distribution_local[iv,jv,kv] <- I0_local*exp(-sigma683Mass_local*X_algae_local*1000*z_s)
+            }
+          }
+        }
+        
+        ## Gross O2 production calculation
+        ### We apply the formula of photosynthetic oxygen productivity for all local volumes based on local intensities
+        for (iv in 1:(n_mesh)){
+          for (jv in 1:(n_mesh)){
+            for (kv in 1:(n_mesh)){
+                # Calculation of local volume value
+                dV <- (r_coordinates_tensor[iv+1,jv,kv] + r_coordinates_tensor[iv,jv,kv])/2*(r_coordinates_tensor[iv+1,jv,kv] - r_coordinates_tensor[iv,jv,kv])*
+                  (teta_coordinates_tensor[iv,jv+1,kv] - teta_coordinates_tensor[iv,jv,kv])*
+                  (z_coordinates_tensor[iv,jv,kv+1] - z_coordinates_tensor[iv,jv,kv])
+                # Local O2 production (gO2 produced over dt)
+                P_O2_spec_local[iv,jv,kv] <- 
+                  Pm_local* sigma683Mass_local*(X_algae_local)*I_distribution_local[iv,jv,kv]/
+                        (alpha_PI*Pm_local +  sigma683Mass_local*X_algae_local*I_distribution_local[iv,jv,kv] + (1/K2_mass)*(sigma683Mass_local*X_algae_local*I_distribution_local[iv,jv,kv])^2)*
+                      X_algae_local*(10^3)*dV*dt_local
+            }
+          }
+        }
+        ### Global volumic O2 production is calculated as the sum of all the local O2 production divided by the total volume (g O2/L)
+        P_O2_gross_local <- sum(P_O2_spec_local,na.rm = TRUE)/V_reactor_local 
+        
+        ## Net carbon assimilation
+        ### Carbon assimilated by photosynthesis (g CHO/L over dt)
+        CHO_photosynthesis_local <- P_O2_gross_local*Y_CHO_O2
+        
+        ### Gross CHO respiration consumption (g CHO/L over dt)
+        CHO_respiration_gross_local <- 1/Y_C_CHO*lambda_decay*X_algae_local*dt_local 
+        
+        ### Net CHO productivity (g CHO/L/d)
+        P_CHO_net_local <- (CHO_photosynthesis_local - CHO_respiration_gross_local)/dt_local
+        
+        
+        # Cell division prediction----------------------------------------------------
+        ## Instantaneous division rate is computed from mathematical model, and cell count evolution is determined based on Euler method
+        µ_local <- µ_max_exp*
+          exp(-(alpha_qp_char_cellDiv*lightDensity_local+beta_qp_char_cellDiv)/q_P_cell_local)
+        N_algae_calc <- N_algae_local*(1 + µ_local*dt_local)
+      
+        
+        # Carbon partition model-------------------------------------------------------------
+        ## Protein quota
+        ### Protein quota is simply computed based on a constant total protein quota and the increase of biomass dryweight and total cell
+        q_P_cell_calc <- q_P_cell_local*N_algae_local/N_algae_calc
+        
+        ## CHO and lipids
+        ### We first compute theoretical (P_L_aux_local) and maximal possible (P_L_max_local) productivities for lipids
+        
+        P_L_aux_local <- Y_C_CHO/Y_C_L*P_CHO_net_local
+        P_L_max_local <- p_L_cell_max*N_algae_local
+        
+        ### Diverging scenarios for lipid production
+        #### 1) Consumption of internal carbohydrates => all consumption is on carbohydrate quota
+        if (P_CHO_net_local < 0){
+          P_L_local <- 0
+          P_CHO_local <- P_CHO_net_local
+        }else{
+        #### 2) The cells after division and newly assimilated carbon are not over the basal cell quota in carbohydarte => all carbon assimilation goes to carbohydrates
+          if (q_CHO_cell_local < q_CHO_cell_max_global){ 
+            P_L_local <- 0
+            P_CHO_local <- P_CHO_net_local
+          }else{
+            if (P_L_aux_local < P_L_max_local){
+              # 3) Cells carbohydrates quota would opverpass the basal quota & the potential for lipid accumulation would not overpass the maximum cell lipid productivit (i.e. P_L_max_local > P_L_aux_local) => then all the cabon left to absorb is absorbed as lipid
+              P_L_local <- P_L_aux_local
+              P_CHO_local <- 0
+            }else{
+              # 3) Cells carbohydrates quota would opverpass the basal quota & the potential for lipid accumulation would overpass the maximum cell lipid productivit (i.e. P_L_max_local > P_L_aux_local) => then lipid are produced according to the maximum possible and the rest of the carbon is absorbed as carbohydrates
+              P_L_local <- P_L_max_local
+              P_CHO_local <- P_CHO_net_local - Y_C_L/Y_C_CHO*P_L_max_local
+            }
+          }
+        }
+  
+        ### Calculation of new partition in cell quotas for lipids and carbohydrates
+        q_L_cell_calc <- (q_L_cell_local*N_algae_local + P_L_local*dt_local)/N_algae_calc
+        q_CHO_cell_calc <- (q_CHO_cell_local*N_algae_local + P_CHO_local*dt_local)/N_algae_calc
+        
+        # Biomass dryweight prediction------------------------------------------------
+        ## New biomass dryweight
+        X_algae_calc <- X_algae_local + 
+          Y_X_C*(Y_C_CHO*P_CHO_local + Y_C_L*P_L_local)*dt_local 
+        
+        # Mass quota prediction---------------------------------------------------
+        q_P_calc <- q_P_local*X_algae_local/X_algae_calc
+        q_CHO_calc <- (q_CHO_local*X_algae_local + P_CHO_local*dt_local)/X_algae_calc
+        q_L_calc <- (q_L_local*X_algae_local + P_L_local*dt_local)/X_algae_calc
+            
+      
+        
+        # Implementation of new data in the data frame----------------------------
+        simulation_df$xAlgae[i_simul + 1] <- X_algae_calc
+        simulation_df$nAlgae[i_simul + 1] <- N_algae_calc
+        simulation_df$q_P[i_simul + 1] <- q_P_calc
+        simulation_df$q_P_cell[i_simul + 1] <- q_P_cell_calc
+        simulation_df$q_CHO[i_simul + 1] <- q_CHO_calc
+        simulation_df$q_CHO_cell[i_simul + 1] <- q_CHO_cell_calc 
+        simulation_df$q_L[i_simul + 1] <-  q_L_calc 
+        simulation_df$q_L_cell[i_simul + 1] <- q_L_cell_calc
+      }
+        
+      # Appending the reactor data to the list of experiment results
+      list_simulation[[3*(i_concentration-1)+j_light]] <- simulation_df
+      ## Due to the relatively large duration of the calculation, we here print the advancement of the calculation (in % of the total approx. time)
+      print(paste(as.character((3*(i_concentration-1)+j_light)/9*100)," %"))
+  
+    }
+  }
+  
+  
+  
+  ## Recuperation of data
+  
+  # For each reactor, predicted data are extracted to correspond to each measured data point. To achieve so, the time step included to the model which is closest to each given measurement is identified and the data for each variable of this time step is then collected from the predicted data base. The predicted results corresponding to each date of the measured data hence obtained are appended to the central data frame.
+  
+  
+  for (i_val in (1:nrow(results_PhoCAssPaNS_df))){
+    
+    if (results_PhoCAssPaNS_df$concentrationClass[i_val] == "0.1 g.L-1"){
+      i_concentration <- 1
+    }else{
+      if (results_PhoCAssPaNS_df$concentrationClass[i_val] == "0.3 g.L-1"){
+        i_concentration <- 2
+      }else{
+        i_concentration <- 3
+      }
+    }
+    
+    if (results_PhoCAssPaNS_df$lightClass[i_val] == "25%"){
+      j_light <- 1
+    }else{
+      if (results_PhoCAssPaNS_df$concentrationClass[i_val] == "0.3 g.L-1"){
+        j_light <- 2
+      }else{
+        j_light <- 3
+      }
+    }
+    
+    local_simulation_df <- list_simulation[[3*(i_concentration-1)+j_light]]
+    
+    results_PhoCAssPaNS_df$predicted_xAlgae[i_val] <- 
+      local_simulation_df$xAlgae[which(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val]) == min(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val])))]
+    results_PhoCAssPaNS_df$predicted_nAlgae[i_val] <-
+      local_simulation_df$nAlgae[which(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val]) == min(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val])))]
+    results_PhoCAssPaNS_df$predicted_q_P[i_val] <- 
+      local_simulation_df$q_P[which(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val]) == min(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val])))]
+    results_PhoCAssPaNS_df$predicted_q_L[i_val] <- 
+      local_simulation_df$q_L[which(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val]) == min(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val])))]
+    results_PhoCAssPaNS_df$predicted_q_CHO[i_val] <- 
+      local_simulation_df$q_CHO[which(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val]) == min(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val])))]
+    results_PhoCAssPaNS_df$predicted_q_P_cell[i_val] <- 
+      local_simulation_df$q_P_cell[which(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val]) == min(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val])))]
+    results_PhoCAssPaNS_df$predicted_q_L_cell[i_val] <- 
+      local_simulation_df$q_L_cell[which(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val]) == min(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val])))]
+    results_PhoCAssPaNS_df$predicted_q_CHO_cell[i_val] <- 
+      local_simulation_df$q_CHO_cell[which(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val]) == min(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val])))]
+    results_PhoCAssPaNS_df$predicted_cnRatio[i_val] <- 
+      local_simulation_df$cnRatio[which(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val]) == min(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val])))]
+    results_PhoCAssPaNS_df$predicted_sigma683Mass[i_val] <- 
+      local_simulation_df$sigma683Mass[which(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val]) == min(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val])))]
+    results_PhoCAssPaNS_df$predicted_Pm[i_val] <- 
+      local_simulation_df$Pm[which(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val]) == min(abs(local_simulation_df$time - results_PhoCAssPaNS_df$day[i_val])))]
+    
+  }
+  
+  
+  ## Validation verification plots
+  
+  # For each variable predicted, measured vs predicted values are plotted.
+  
+  validationPlot_dryweight <-
+    ggplot(data = results_PhoCAssPaNS_df, aes(x = predicted_xAlgae, y = dryWeight)) +
+      geom_point(aes(color = lightClass, shape = concentrationClass), size = 3,stroke = 1.25) +
+      geom_abline( slope = 1, intercept = 0,colour = "red", linewidth = 2 , linetype = "dashed") +
+      scale_shape_manual(values = c(21,23,24)) +
+      labs(title = "a)",
+           x = expression(bold(atop("Predicted biomass concentration",
+                                          paste("(g dry-weight.L"^"-1",")")))),
+           y = expression(bold(atop("Measured biomass concentration",
+                                          paste("(g dry-weight.L"^"-1",")"))))) +
+      theme_paul + 
+      scale_color_manual(values = c(my_color_fill[1],my_color_fill[2],my_color_fill[3])) +
+      scale_fill_manual(values = c(my_color_fill[1],my_color_fill[2],my_color_fill[3])) +
+      theme_paul
+  
+  print(validationPlot_dryweight)
+  
+  
+  validationPlot_cellCount <-
+    ggplot(data = results_PhoCAssPaNS_df, aes(x = predicted_nAlgae, y = cellCount*1000)) +
+      geom_point(aes(color = lightClass, shape = concentrationClass), size = 3,stroke = 1.25) +
+      geom_abline( slope = 1, intercept = 0,colour = "red", linewidth = 2 , linetype = "dashed") +
+      scale_shape_manual(values = c(21,23,24)) +
+      labs(title = "b)",
+           x = expression(bold(atop("Predicted biomass cell count",
+                                          paste("(cell.L"^"-1",")")))),
+           y = expression(bold(atop("Measured biomass cell count",
+                                          paste("(cell.L"^"-1",")"))))) +
+      theme_paul + 
+      scale_y_log10() + 
+      scale_x_log10() +
+      scale_color_manual(values = c(my_color_fill[1],my_color_fill[2],my_color_fill[3])) +
+      scale_fill_manual(values = c(my_color_fill[1],my_color_fill[2],my_color_fill[3])) +
+      theme_paul
+  
+  print(validationPlot_cellCount)
+  
+  
+  
+  
+  validationPlot_totalCHO <- 
+    ggplot(data = results_PhoCAssPaNS_df, aes(x = predicted_q_CHO_cell*predicted_nAlgae, 
+                                           y = totalSugarsCell*cellCount*1000)) +
+      geom_point(aes(color = lightClass, shape = concentrationClass), size = 3,stroke = 1.25) +
+      geom_abline( slope = 1, intercept = 0,colour = "red", linewidth = 2 , linetype = "dashed") +
+      scale_shape_manual(values = c(21,23,24)) +
+      labs(title = "c)",
+           x = expression(bold(atop("Predicted total carbohydrates",
+                                          paste("(g carbohydrates.L"^"-1",")")))),
+           y = expression(bold(atop("Measured total carbohydrates",
+                                          paste("(g carbohydrates.L"^"-1",")"))))) +
+      theme_paul + 
+      scale_y_log10() + 
+      scale_x_log10() +
+      scale_color_manual(values = c(my_color_fill[1],my_color_fill[2],my_color_fill[3])) +
+      scale_fill_manual(values = c(my_color_fill[1],my_color_fill[2],my_color_fill[3])) +
+      theme_paul
+  
+  print(validationPlot_totalCHO)
+  
+  
+  validationPlot_totalLipids <- 
+    ggplot(data = results_PhoCAssPaNS_df, aes(x = predicted_q_L_cell*predicted_nAlgae,
+                                           y = totalFAMECell*cellCount*1000)) +
+      geom_point(aes(color = lightClass, shape = concentrationClass), size = 3,stroke = 1.25) +
+      geom_abline( slope = 1, intercept = 0,colour = "red", linewidth = 2 , linetype = "dashed") +
+      scale_shape_manual(values = c(21,23,24)) +
+      labs(title = "d)",
+           x = expression(bold(atop("Predicted total lipids",
+                                          paste("(g lipids.L"^"-1",")")))),
+           y = expression(bold(atop("Measured total lipids",
+                                          paste("(g lipids.L"^"-1",")"))))) +
+      theme_paul + 
+      scale_y_log10() + 
+      scale_x_log10() +
+      scale_color_manual(values = c(my_color_fill[1],my_color_fill[2],my_color_fill[3])) +
+      scale_fill_manual(values = c(my_color_fill[1],my_color_fill[2],my_color_fill[3])) +
+      theme_paul
+  
+  
+  print(validationPlot_totalLipids)
+  
+  # Outputs from sensitivity analysis
+  ## The R2 and RMSE from the fit of global concentration in lipid, biomass, and carbohydrate are computed and recorded.
+  
+  ### Dryweight concentration
+  SS_res <- sum((results_PhoCAssPaNS_df$dryWeight - results_PhoCAssPaNS_df$predicted_xAlgae)^2 , na.rm = TRUE)
+  SS_tot <- sum((results_PhoCAssPaNS_df$dryWeight - mean(results_PhoCAssPaNS_df$dryWeight,na.rm = TRUE))^2 , na.rm = TRUE)
+  R2_dryweight <- 1 - SS_res/SS_tot 
+  
+  MRE_dryweight <- mean(abs((results_PhoCAssPaNS_df$dryWeight - results_PhoCAssPaNS_df$predicted_xAlgae)/results_PhoCAssPaNS_df$dryWeight),na.rm = TRUE)
+  RMSE_dryweight <- sqrt(sum((results_PhoCAssPaNS_df$dryWeight -
+                                results_PhoCAssPaNS_df$predicted_xAlgae)^2,na.rm = TRUE)/
+                        length(results_PhoCAssPaNS_df$dryWeight))
+  
+  ### Global lipid concentration
+  
+  SS_res <- sum((results_PhoCAssPaNS_df$totalFAMECell*results_PhoCAssPaNS_df$cellCount*1000 -
+                   results_PhoCAssPaNS_df$predicted_q_L_cell*results_PhoCAssPaNS_df$predicted_nAlgae)^2 ,
+                na.rm = TRUE)
+  SS_tot <- sum((results_PhoCAssPaNS_df$totalFAMECell*results_PhoCAssPaNS_df$cellCount*1000 -
+                   mean(results_PhoCAssPaNS_df$totalFAMECell*results_PhoCAssPaNS_df$cellCount*1000,
+                        na.rm = TRUE))^2 ,
+                na.rm = TRUE)
+  R2_lipids <- 1 - SS_res/SS_tot 
+  MRE_lipids <- mean(abs((results_PhoCAssPaNS_df$totalFAMECell*results_PhoCAssPaNS_df$cellCount*1000 -
+                           results_PhoCAssPaNS_df$predicted_q_L_cell*results_PhoCAssPaNS_df$predicted_nAlgae)/
+                       (results_PhoCAssPaNS_df$totalFAMECell*results_PhoCAssPaNS_df$cellCount*1000)),na.rm = TRUE)
+  RMSE_lipids <- sqrt(sum((results_PhoCAssPaNS_df$totalFAMECell*results_PhoCAssPaNS_df$cellCount*1000 -
+                                  results_PhoCAssPaNS_df$predicted_q_L_cell*results_PhoCAssPaNS_df$predicted_nAlgae)^2,na.rm = TRUE)/
+                        length(results_PhoCAssPaNS_df$totalFAMECell*results_PhoCAssPaNS_df$cellCount*1000))
+  
+  
+  ### Global carbohydrate concentration
+  
+  SS_res <- sum((results_PhoCAssPaNS_df$totalSugarsCell*results_PhoCAssPaNS_df$cellCount*1000 -
+                   results_PhoCAssPaNS_df$predicted_q_CHO_cell*results_PhoCAssPaNS_df$predicted_nAlgae)^2 ,
+                na.rm = TRUE)
+  SS_tot <- sum((results_PhoCAssPaNS_df$totalSugarsCell*results_PhoCAssPaNS_df$cellCount*1000 -
+                   mean(results_PhoCAssPaNS_df$totalSugarsCell*results_PhoCAssPaNS_df$cellCount*1000,
+                        na.rm = TRUE))^2 ,
+                na.rm = TRUE)
+  R2_CHO <- 1 - SS_res/SS_tot 
+  MRE_CHO <- mean(abs((results_PhoCAssPaNS_df$totalSugarsCell*results_PhoCAssPaNS_df$cellCount*1000 -
+                         results_PhoCAssPaNS_df$predicted_q_CHO_cell*results_PhoCAssPaNS_df$predicted_nAlgae)/
+                        (results_PhoCAssPaNS_df$totalSugarsCell*results_PhoCAssPaNS_df$cellCount*1000)),na.rm = TRUE)
+  RMSE_CHO <- sqrt(sum((results_PhoCAssPaNS_df$totalSugarsCell*results_PhoCAssPaNS_df$cellCount*1000 -
+                                  results_PhoCAssPaNS_df$predicted_q_CHO_cell*results_PhoCAssPaNS_df$predicted_nAlgae)^2,na.rm = TRUE)/
+                        length(results_PhoCAssPaNS_df$totalSugarsCell*results_PhoCAssPaNS_df$cellCount*1000))
+  
+  ### Cell count
+  
+  SS_res <- sum((results_PhoCAssPaNS_df$cellCount - results_PhoCAssPaNS_df$predicted_nAlgae/1000)^2 , na.rm = TRUE)
+  SS_tot <- sum((results_PhoCAssPaNS_df$cellCount - mean(results_PhoCAssPaNS_df$cellCount,na.rm = TRUE))^2 , na.rm = TRUE)
+  R2_cellcount <- 1 - SS_res/SS_tot 
+  
+  RMSE_cellcount <- sqrt(sum((results_PhoCAssPaNS_df$cellCount - results_PhoCAssPaNS_df$predicted_nAlgae/1000)^2,na.rm = TRUE)/
+                        length(results_PhoCAssPaNS_df$cellCount))
+  RMSE_cellcount/10^7 # => 10^7 cell/mL
+  
+  
+  
+  table_results_SA[i_sensitivity,] <- c(R2_dryweight,
+                                        RMSE_dryweight,
+                                        R2_lipids,
+                                        RMSE_lipids,
+                                        R2_CHO,
+                                        RMSE_CHO)
+  print(c("i=sensitivity =",i_sensitivity, "has terminated"))
+}
+```
+
+
+
+
+
+## Graphic output: Tornado diagram
+
+```{r, echo = TRUE, fig.width=14,fig.height=9}
+
+
+# Import sensitivity analysis results
+## Optional import
+## To avoid running the full code to create the output of the sensitivity analysis, the possibility is given to directly import the results from the sensitivity analysis. The final tornado diagram could then be obtained thanks to running only the present section of the script
+
+option_run_local_SA <- 0
+
+if (option_run_local_SA == 1){
+  table_results_SA <- read.csv(file = paste(localPath,"/Data files/Sensitivity analysis_final.csv"),
+  sep = ";")
+  
+  table_results_SA$X <- c()
+}
+
+
+
+# Parameters list
+
+parameter_list <- c("Time discretisation",
+                    "Volume discretisation",
+                    "Flask depth",
+                    "Flask diameter",
+                    "Flask angle",
+                    "Carbon to biomass ratio",
+                    "Carbon to lipid ratio",
+                    "Carbon to protein ratio",
+                    "Rate of endogenous carbon consumption",
+                    expression(paste("Maximum specific rate of O"[2]," production")),
+                    expression("[C:N]"["char"]),
+                    expression(gamma["Pm"]),
+                    expression(sigma["max"]),
+                    expression("K"[q[p]]),
+                    expression(lambda["CHO"]),
+                    expression(mu[exp]^'max'),
+                    expression(alpha[q[p]^char]),
+                    expression(beta[q[p]^char]),
+                    expression(q[CHO]^basal),
+                    expression(P[L]^max),
+                    "Incident light intensity",
+                    "Volume change",
+                    expression(alpha[PI]),
+                    expression(K["2"]))
+
+
+# R2 Lipids
+
+## original value of output
+R2_lipids_base_value <- table_results_SA[1,3]
+
+## Reorganisation of the data for tornado plot
+R2_lipids_base_vector_0 <- table_results_SA[,3]
+R2_lipids_base_vector_0 <- R2_lipids_base_vector_0[-1]
+
+R2_lipids_base_vector_1 <- matrix(NA,nrow = 24,ncol = 4)
+R2_lipids_base_vector_1 <- as.data.frame(R2_lipids_base_vector_1)
+R2_lipids_base_vector_1[,1] <- parameter_list
+
+for (i in 1:24){
+  R2_lipids_base_vector_1[i,2] <- R2_lipids_base_vector_0[2*i-1] # Min value
+  R2_lipids_base_vector_1[i,3] <- R2_lipids_base_vector_0[2*i] # Max value
+  R2_lipids_base_vector_1[i,4] <- max(abs(R2_lipids_base_vector_1[i,2]-R2_lipids_base_value),
+                                 abs(R2_lipids_base_vector_1[i,3]-R2_lipids_base_value)) # Max delta from central value
+}
+
+
+## Order base matrix
+new_order <- order(R2_lipids_base_vector_1[,4], decreasing = FALSE)
+R2_lipids_base_vector_sorted <- R2_lipids_base_vector_1[new_order,]
+
+
+## width of bars in tornado plot
+width <- 0.95
+
+## Creation of data frame for tornado plot
+R2_lipids_df <- data.frame(
+  y_min = rep(seq(1,24,1) - width/2,2),
+  y_max = rep(seq(1,24,1) + width/2,2),
+  x_min = c(R2_lipids_base_vector_sorted[,2],rep(R2_lipids_base_value,24)),
+  x_max = c(rep(R2_lipids_base_value,24),R2_lipids_base_vector_sorted[,3]),
+  fillValue = c(rep("Negative error",24),rep("Positive error",24)),
+  facetValue = rep("Lipids",48),
+  base_value = rep(R2_lipids_base_value,48)
+)
+
+
+# R2 Biomass
+
+## original value of output
+R2_biomass_base_value <- table_results_SA[1,1]
+
+## Reorganisation of the data for tornado plot
+R2_biomass_base_vector_0 <- table_results_SA[,1]
+R2_biomass_base_vector_0 <- R2_biomass_base_vector_0[-1]
+
+R2_biomass_base_vector_1 <- matrix(NA,nrow = 24,ncol = 4)
+R2_biomass_base_vector_1 <- as.data.frame(R2_biomass_base_vector_1)
+R2_biomass_base_vector_1[,1] <- parameter_list
+
+for (i in 1:24){
+  R2_biomass_base_vector_1[i,2] <- R2_biomass_base_vector_0[2*i-1] # Min value
+  R2_biomass_base_vector_1[i,3] <- R2_biomass_base_vector_0[2*i] # Max value
+  R2_biomass_base_vector_1[i,4] <- max(abs(R2_biomass_base_vector_1[i,2]-R2_biomass_base_value),
+                                 abs(R2_biomass_base_vector_1[i,3]-R2_biomass_base_value)) # Max delta from central value
+}
+
+
+## Order base matrix
+R2_biomass_base_vector_sorted <- R2_biomass_base_vector_1[new_order,]
+
+
+## Creation of data frame for tornado plot
+R2_biomass_df <- data.frame(
+  y_min = rep(seq(1,24,1) - width/2,2),
+  y_max = rep(seq(1,24,1) + width/2,2),
+  x_min = c(R2_biomass_base_vector_sorted[,2],rep(R2_biomass_base_value,24)),
+  x_max = c(rep(R2_biomass_base_value,24),R2_biomass_base_vector_sorted[,3]),
+  fillValue = c(rep("Negative error",24),rep("Positive error",24)),
+  facetValue = rep("Biomass",48),
+  base_value = rep(R2_biomass_base_value,48)
+)
+
+
+
+
+# R2 Carbohydrates
+
+## original value of output
+R2_CHO_base_value <- table_results_SA[1,5]
+
+## Reorganisation of the data for tornado plot
+R2_CHO_base_vector_0 <- table_results_SA[,5]
+R2_CHO_base_vector_0 <- R2_CHO_base_vector_0[-1]
+
+R2_CHO_base_vector_1 <- matrix(NA,nrow = 24,ncol = 4)
+R2_CHO_base_vector_1 <- as.data.frame(R2_CHO_base_vector_1)
+R2_CHO_base_vector_1[,1] <- parameter_list
+
+for (i in 1:24){
+  R2_CHO_base_vector_1[i,2] <- R2_CHO_base_vector_0[2*i-1] # Min value
+  R2_CHO_base_vector_1[i,3] <- R2_CHO_base_vector_0[2*i] # Max value
+  R2_CHO_base_vector_1[i,4] <- max(abs(R2_CHO_base_vector_1[i,2]-R2_CHO_base_value),
+                                 abs(R2_CHO_base_vector_1[i,3]-R2_CHO_base_value)) # Max delta from central value
+}
+
+
+## Order base matrix
+R2_CHO_base_vector_sorted <- R2_CHO_base_vector_1[new_order,]
+
+
+
+
+## width of columns in plot (value between 0 and 1)
+width <- 0.95
+
+# Creation of data frame for tornado plot
+R2_CHO_df <- data.frame(
+  y_min = rep(seq(1,24,1) - width/2,2),
+  y_max = rep(seq(1,24,1) + width/2,2),
+  x_min = c(R2_CHO_base_vector_sorted[,2],rep(R2_CHO_base_value,24)),
+  x_max = c(rep(R2_CHO_base_value,24),R2_CHO_base_vector_sorted[,3]),
+  fillValue = c(rep("Negative error",24),rep("Positive error",24)),
+  facetValue = rep("Carbohydrates",48),
+  base_value = rep(R2_CHO_base_value,48)
+)
+
+
+# Final plot
+
+## Final data frame organisation for facetted plot
+final_SA_df <- rbind(R2_lipids_df, R2_biomass_df , R2_CHO_df)
+
+final_SA_plot <-
+  ggplot() + 
+  geom_rect(data = final_SA_df, 
+            aes(ymax = y_max, ymin = y_min, xmax = x_max, xmin = x_min, fill = fillValue), alpha = 0.95) +
+  # geom_vline(aes(xintercept = base_value)) +
+  scale_y_continuous(breaks = c(1:24), 
+                     labels = R2_CHO_base_vector_sorted[,1]) +
+  xlab(expression(bold("Model R"^2))) +
+  theme_paul +
+  theme(axis.title.y=element_blank(), legend.position = 'bottom',
+        # legend.title = element_blank(),
+        axis.text.y = element_text(size = 15)) +
+  facet_wrap(~ factor(facetValue,c("Lipids","Biomass","Carbohydrates")),
+             scales = "free_x"
+             )
+
+ggsave(
+    "Figure_SA.png",
+    plot = final_SA_plot,
+    device = "png",
+    scale = 1,
+    width = 14,
+    height = 9,
+    units = "in",
+    dpi = 1000,
+    limitsize = TRUE,
+    bg = "white"
+  )
+```
 
 ```{r stop capsule}
 if (lastSimulation == 0){
@@ -4981,3 +5846,4 @@ grid.arrange(arrangeGrob(plot_chla_deg + theme(legend.position="none", axis.titl
                            nrow=2,heights = c(5,5.5),widths = c(5,5)),
                mylegend,ncol = 2,widths = c(5,1))
 ```
+
