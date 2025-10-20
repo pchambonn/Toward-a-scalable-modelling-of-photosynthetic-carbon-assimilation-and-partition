@@ -4758,7 +4758,7 @@ R2_cellcount
   # K2_mass <=> 24
 
 table_parameters = matrix(data = c(200	,	100	,	400	,
-                                   50	,	25	,	100	,
+                                   50	,	25	,	75	,
                                    0.0556	,	0.054181633	,	0.057018367	,
                                    0.06	,	0.058469388	,	0.061530612	,
                                    1.396263	,	1.360644046	,	1.431881954	,
@@ -5846,4 +5846,5 @@ grid.arrange(arrangeGrob(plot_chla_deg + theme(legend.position="none", axis.titl
                            nrow=2,heights = c(5,5.5),widths = c(5,5)),
                mylegend,ncol = 2,widths = c(5,1))
 ```
+
 
