@@ -4732,34 +4732,32 @@ R2_cellcount
 # We create a table of parameters "table_parameters" for which each line correpsond to a parameter which will be varied individually for sensitivity analysis. The first column corresponds to the central or base value, and the second and third columns respectively correspond to the lower and higher uncertainty values (when varying of one standard deviation if the uncertainy is based on regression or statistical analysis).
 
 # The order of the parameters for each line is as follows:
-  # n_iter <=> 1
-  # n_mesh <=> 2
-  # d_reactor <=> 3
-  # r_reactor <=> 4
-  # angle_eflask <=> 5
-  # Y_X_C <=> 6
-  # Y_C_L <=> 7
-  # Y_C_P <=> 8
-  # lambda_decay <=> 9
-  # Pm_0_exp <=> 10
-  # cnRatio_char <=> 11
-  # gamma_Pm <=> 12
-  # sigma_max <=> 13
-  # K_qP <=> 14
-  # lambda_CHO <=> 15
-  # µ_max_exp <=> 16
-  # alpha_qp_char_cellDiv <=> 17
-  # beta_qp_char_cellDiv <=> 18
-  # q_CHO_cell_max_global <=> 19
-  # p_L_cell_max <=> 20
-  # I0 <=> 21
-  # Volume_change <=> 22
-  # alpha_PI <=> 23
-  # K2_mass <=> 24
+  # d_reactor <=> 1
+  # r_reactor <=> 2
+  # angle_eflask <=> 3
+  # Y_X_C <=> 4
+  # Y_C_L <=> 5
+  # Y_C_P <=> 6
+  # lambda_decay <=> 7
+  # Pm_0_exp <=> 8
+  # cnRatio_char <=> 9
+  # gamma_Pm <=> 10
+  # sigma_max <=> 11
+  # K_qP <=> 12
+  # lambda_CHO <=> 13
+  # µ_max_exp <=> 14
+  # alpha_qp_char_cellDiv <=> 15
+  # beta_qp_char_cellDiv <=> 16
+  # q_CHO_cell_max_global <=> 17
+  # p_L_cell_max <=> 18
+  # I0 <=> 19
+  # Volume_change <=> 20
+  # alpha_PI <=> 21
+  # K2_mass <=> 22
 
-table_parameters = matrix(data = c(200	,	100	,	400	,
-                                   50	,	25	,	75	,
-                                   0.0556	,	0.054181633	,	0.057018367	,
+# Due to low sensitivity, the value for n_iter in base case was lowered to 100.
+
+table_parameters = matrix(data = c(0.0556	,	0.054181633	,	0.057018367	,
                                    0.06	,	0.058469388	,	0.061530612	,
                                    1.396263	,	1.360644046	,	1.431881954	,
                                    1.92019	,	1.89019	,	1.95019	,
@@ -4785,11 +4783,11 @@ table_parameters = matrix(data = c(200	,	100	,	400	,
 
 # A table to register the results is created
 
-table_results_SA <- matrix(NA, nrow = 49, ncol = 6)
+table_results_SA <- matrix(NA, nrow = 45, ncol = 6)
 
 # The sensitivity calculation loop is now implemented. For each turn of the loop, a list of parameter is created in the order previously given extracted from table_parameters matrix. This list of parameters present the central value for all parameters with one parameter being varied alternatively to its lower uncertainty and to its upper uncertainty. The first loop is carried out implementing only central values.
 
-for(i_sensitivity in (1:49)){
+for(i_sensitivity in (1:45)){
   # Selection of parameter list
   local_parameters_list <- table_parameters[,1]
   
@@ -4800,8 +4798,8 @@ for(i_sensitivity in (1:49)){
 
   # General parameters------------------------------------------------------------
   
-  n_iter = local_parameters_list[1] # number of iterations
-  n_mesh = local_parameters_list[2] # mesh subdivision for discrete modelling of E-flasks
+  n_iter = 100 # number of iterations
+  n_mesh = 50 # mesh subdivision for discrete modelling of E-flasks
   dt = 16/n_iter # time step (day)
   simulation_df <- data.frame(time = seq(0,n_iter*dt,dt))
   
@@ -4811,9 +4809,9 @@ for(i_sensitivity in (1:49)){
   ## r_reactor : reactor radius (m)
   ## angle_eflask : inclination of the side of the erlen (radians)
     
-  d_reactor = local_parameters_list[3]
-  r_reactor = local_parameters_list[4]
-  angle_eflask = local_parameters_list[5]
+  d_reactor = local_parameters_list[1]
+  r_reactor = local_parameters_list[2]
+  angle_eflask = local_parameters_list[3]
   
   # Initial reactor volume is computed (V_reactor_0, L)
   V_reactor_0 = 1/3*pi*r_reactor^3*tan(angle_eflask)*(1-(1-d_reactor/(r_reactor*tan(angle_eflask)))^3)*1000
@@ -4827,9 +4825,9 @@ for(i_sensitivity in (1:49)){
   
   Y_CHO_O2 <- 4/32*180/24
   Y_C_CHO <- 0.439
-  Y_X_C <-  local_parameters_list[6]
-  Y_C_L <- local_parameters_list[7]
-  Y_C_P <- local_parameters_list[8]
+  Y_X_C <-  local_parameters_list[4]
+  Y_C_L <- local_parameters_list[5]
+  Y_C_P <- local_parameters_list[6]
   
   
   # Cell parameters
@@ -4846,18 +4844,18 @@ for(i_sensitivity in (1:49)){
   ### q_CHO_cell_max_global : maximum carbohydrate cell quota prior to conversion of carbon to lipids (g CHO/cell)
   ### p_L_cell_max : maximum rate of production of lipid for a single cell (g Lipid/cell/s)
   
-  lambda_decay = local_parameters_list[9]
-  Pm_0_exp = local_parameters_list[10]
-  cnRatio_char = local_parameters_list[11]
-  gamma_Pm = local_parameters_list[12]
-  sigma_max = local_parameters_list[13]
-  K_qP = local_parameters_list[14]
-  lambda_CHO = local_parameters_list[15]
-  µ_max_exp = local_parameters_list[16]
-  alpha_qp_char_cellDiv = local_parameters_list[17]
-  beta_qp_char_cellDiv = local_parameters_list[18]
-  q_CHO_cell_max_global = local_parameters_list[19]
-  p_L_cell_max = local_parameters_list[20]
+  lambda_decay = local_parameters_list[7]
+  Pm_0_exp = local_parameters_list[8]
+  cnRatio_char = local_parameters_list[9]
+  gamma_Pm = local_parameters_list[10]
+  sigma_max = local_parameters_list[11]
+  K_qP = local_parameters_list[12]
+  lambda_CHO = local_parameters_list[13]
+  µ_max_exp = local_parameters_list[14]
+  alpha_qp_char_cellDiv = local_parameters_list[15]
+  beta_qp_char_cellDiv = local_parameters_list[16]
+  q_CHO_cell_max_global = local_parameters_list[17]
+  p_L_cell_max = local_parameters_list[18]
   
   
   
@@ -4882,7 +4880,7 @@ for(i_sensitivity in (1:49)){
   
   ## Light conditions initialization
   ### Global initial light intensity (I0, µmol/m2/s)
-  I_0 = local_parameters_list[21]
+  I_0 = local_parameters_list[19]
   ### The light/dark period is determined for the corresponding lines of the time vector (day_vector, binary =1 if day, = 0 if night)
   day_vector <- rep(1,nrow(simulation_df))
   day_vector[(((simulation_df$time - floor(simulation_df$time)) < 11/24) & ((simulation_df$time - floor(simulation_df$time)) > 7/24))] <- 0
@@ -4895,15 +4893,15 @@ for(i_sensitivity in (1:49)){
   ### The volume variations due to sampling must be accounted for in order to recreate the experimental conditions. The values reported on each sampling and corresponding dates from the start are gathered in a matrix (matrix_volume_change)
   
   V_reactor_0_table <- c(V_reactor_0,rep(NA,nrow(simulation_df)-1))
-  matrix_volume_change <- local_parameters_list[22]*
+  matrix_volume_change <- local_parameters_list[20]*
     matrix(c(c(0.75,1.75,3.75,7.75,9.75,13.75,15.75),
              c(0.470,0.390,0.310,0.230,0.150,NA,NA),
              c(0.500,0.450,0.400,0.350,0.300,0.220,0.165),
              c(0.500,0.450,0.400,0.350,0.300,0.250,0.200)),
            ncol = 4)
   
-  alpha_PI = local_parameters_list[23]
-  K2_mass = local_parameters_list[24]
+  alpha_PI = local_parameters_list[21]
+  K2_mass = local_parameters_list[22]
   
   factor_protein <- 5.04
   
@@ -5165,8 +5163,6 @@ for(i_sensitivity in (1:49)){
     }
   }
   
-  
-  
   ## Recuperation of data
   
   # For each reactor, predicted data are extracted to correspond to each measured data point. To achieve so, the time step included to the model which is closest to each given measurement is identified and the data for each variable of this time step is then collected from the predicted data base. The predicted results corresponding to each date of the measured data hence obtained are appended to the central data frame.
@@ -5379,34 +5375,28 @@ for(i_sensitivity in (1:49)){
 ```
 
 
-
-
-
 ## Graphic output: Tornado diagram
 
 ```{r, echo = TRUE, fig.width=14,fig.height=9}
 
 
+
 # Import sensitivity analysis results
 ## Optional import
 ## To avoid running the full code to create the output of the sensitivity analysis, the possibility is given to directly import the results from the sensitivity analysis. The final tornado diagram could then be obtained thanks to running only the present section of the script
-
 option_run_local_SA <- 0
-
 if (option_run_local_SA == 1){
-  table_results_SA <- read.csv(file = paste(localPath,"/Data files/Sensitivity analysis_final.csv"),
-  sep = ";")
+  table_results_SA <- 
+     read.csv(file = paste(localPath,"/Data files/Sensitivity analysis_final.csv",
+                           sep=""),
+              sep = ";")
   
   table_results_SA$X <- c()
 }
 
-
-
 # Parameters list
 
-parameter_list <- c("Time discretisation",
-                    "Volume discretisation",
-                    "Flask depth",
+parameter_list <- c("Flask depth",
                     "Flask diameter",
                     "Flask angle",
                     "Carbon to biomass ratio",
@@ -5429,6 +5419,7 @@ parameter_list <- c("Time discretisation",
                     expression(alpha[PI]),
                     expression(K["2"]))
 
+### Part 1: with R2 as output
 
 # R2 Lipids
 
@@ -5574,7 +5565,197 @@ final_SA_plot <-
              )
 
 ggsave(
-    "Figure_SA.png",
+    "Figure_SA_R2.png",
+    plot = final_SA_plot,
+    device = "png",
+    scale = 1,
+    width = 14,
+    height = 9,
+    units = "in",
+    dpi = 1000,
+    limitsize = TRUE,
+    bg = "white"
+  )
+
+### Part II: with RMSE as output
+
+# Import sensitivity analysis results
+## Optional import
+## To avoid running the full code to create the output of the sensitivity analysis, the possibility is given to directly import the results from the sensitivity analysis. The final tornado diagram could then be obtained thanks to running only the present section of the script
+
+# Parameters list
+
+parameter_list <- c("Time discretisation",
+                    "Volume discretisation",
+                    "Flask depth",
+                    "Flask diameter",
+                    "Flask angle",
+                    "Carbon to biomass ratio",
+                    "Carbon to lipid ratio",
+                    "Carbon to protein ratio",
+                    "Rate of endogenous carbon consumption",
+                    expression(paste("Maximum specific rate of O"[2]," production")),
+                    expression("[C:N]"["char"]),
+                    expression(gamma["Pm"]),
+                    expression(sigma["max"]),
+                    expression("K"[q[p]]),
+                    expression(lambda["CHO"]),
+                    expression(mu[exp]^'max'),
+                    expression(alpha[q[p]^char]),
+                    expression(beta[q[p]^char]),
+                    expression(q[CHO]^basal),
+                    expression(P[L]^max),
+                    "Incident light intensity",
+                    "Volume change",
+                    expression(alpha[PI]),
+                    expression(K["2"]))
+
+
+# RMSE Lipids
+
+## original value of output
+RMSE_lipids_base_value <- table_results_SA[1,4]
+
+## Reorganisation of the data for tornado plot
+RMSE_lipids_base_vector_0 <- table_results_SA[,4]
+RMSE_lipids_base_vector_0 <- RMSE_lipids_base_vector_0[-1]
+
+RMSE_lipids_base_vector_1 <- matrix(NA,nrow = 24,ncol = 4)
+RMSE_lipids_base_vector_1 <- as.data.frame(RMSE_lipids_base_vector_1)
+RMSE_lipids_base_vector_1[,1] <- parameter_list
+
+for (i in 1:24){
+  RMSE_lipids_base_vector_1[i,2] <- RMSE_lipids_base_vector_0[2*i-1] # Min value
+  RMSE_lipids_base_vector_1[i,3] <- RMSE_lipids_base_vector_0[2*i] # Max value
+  RMSE_lipids_base_vector_1[i,4] <- max(abs(RMSE_lipids_base_vector_1[i,2]-RMSE_lipids_base_value),
+                                 abs(RMSE_lipids_base_vector_1[i,3]-RMSE_lipids_base_value)) # Max delta from central value
+}
+
+
+## Order base matrix
+new_order <- order(RMSE_lipids_base_vector_1[,4], decreasing = FALSE)
+RMSE_lipids_base_vector_sorted <- RMSE_lipids_base_vector_1[new_order,]
+
+
+## width of bars in tornado plot
+width <- 0.95
+
+## Creation of data frame for tornado plot
+RMSE_lipids_df <- data.frame(
+  y_min = rep(seq(1,24,1) - width/2,2),
+  y_max = rep(seq(1,24,1) + width/2,2),
+  x_min = c(RMSE_lipids_base_vector_sorted[,2],rep(RMSE_lipids_base_value,24)),
+  x_max = c(rep(RMSE_lipids_base_value,24),RMSE_lipids_base_vector_sorted[,3]),
+  fillValue = c(rep("Negative error",24),rep("Positive error",24)),
+  facetValue = rep("Lipids",48),
+  base_value = rep(RMSE_lipids_base_value,48)
+)
+
+
+# RMSE Biomass
+
+## original value of output
+RMSE_biomass_base_value <- table_results_SA[1,2]
+
+## Reorganisation of the data for tornado plot
+RMSE_biomass_base_vector_0 <- table_results_SA[,2]
+RMSE_biomass_base_vector_0 <- RMSE_biomass_base_vector_0[-1]
+
+RMSE_biomass_base_vector_1 <- matrix(NA,nrow = 24,ncol = 4)
+RMSE_biomass_base_vector_1 <- as.data.frame(RMSE_biomass_base_vector_1)
+RMSE_biomass_base_vector_1[,1] <- parameter_list
+
+for (i in 1:24){
+  RMSE_biomass_base_vector_1[i,2] <- RMSE_biomass_base_vector_0[2*i-1] # Min value
+  RMSE_biomass_base_vector_1[i,3] <- RMSE_biomass_base_vector_0[2*i] # Max value
+  RMSE_biomass_base_vector_1[i,4] <- max(abs(RMSE_biomass_base_vector_1[i,2]-RMSE_biomass_base_value),
+                                 abs(RMSE_biomass_base_vector_1[i,3]-RMSE_biomass_base_value)) # Max delta from central value
+}
+
+
+## Order base matrix
+RMSE_biomass_base_vector_sorted <- RMSE_biomass_base_vector_1[new_order,]
+
+
+## Creation of data frame for tornado plot
+RMSE_biomass_df <- data.frame(
+  y_min = rep(seq(1,24,1) - width/2,2),
+  y_max = rep(seq(1,24,1) + width/2,2),
+  x_min = c(RMSE_biomass_base_vector_sorted[,2],rep(RMSE_biomass_base_value,24)),
+  x_max = c(rep(RMSE_biomass_base_value,24),RMSE_biomass_base_vector_sorted[,3]),
+  fillValue = c(rep("Negative error",24),rep("Positive error",24)),
+  facetValue = rep("Biomass",48),
+  base_value = rep(RMSE_biomass_base_value,48)
+)
+
+
+
+
+# RMSE Carbohydrates
+
+## original value of output
+RMSE_CHO_base_value <- table_results_SA[1,6]
+
+## Reorganisation of the data for tornado plot
+RMSE_CHO_base_vector_0 <- table_results_SA[,6]
+RMSE_CHO_base_vector_0 <- RMSE_CHO_base_vector_0[-1]
+
+RMSE_CHO_base_vector_1 <- matrix(NA,nrow = 24,ncol = 4)
+RMSE_CHO_base_vector_1 <- as.data.frame(RMSE_CHO_base_vector_1)
+RMSE_CHO_base_vector_1[,1] <- parameter_list
+
+for (i in 1:24){
+  RMSE_CHO_base_vector_1[i,2] <- RMSE_CHO_base_vector_0[2*i-1] # Min value
+  RMSE_CHO_base_vector_1[i,3] <- RMSE_CHO_base_vector_0[2*i] # Max value
+  RMSE_CHO_base_vector_1[i,4] <- max(abs(RMSE_CHO_base_vector_1[i,2]-RMSE_CHO_base_value),
+                                 abs(RMSE_CHO_base_vector_1[i,3]-RMSE_CHO_base_value)) # Max delta from central value
+}
+
+
+## Order base matrix
+RMSE_CHO_base_vector_sorted <- RMSE_CHO_base_vector_1[new_order,]
+
+
+
+
+## width of columns in plot (value between 0 and 1)
+width <- 0.95
+
+# Creation of data frame for tornado plot
+RMSE_CHO_df <- data.frame(
+  y_min = rep(seq(1,24,1) - width/2,2),
+  y_max = rep(seq(1,24,1) + width/2,2),
+  x_min = c(RMSE_CHO_base_vector_sorted[,2],rep(RMSE_CHO_base_value,24)),
+  x_max = c(rep(RMSE_CHO_base_value,24),RMSE_CHO_base_vector_sorted[,3]),
+  fillValue = c(rep("Negative error",24),rep("Positive error",24)),
+  facetValue = rep("Carbohydrates",48),
+  base_value = rep(RMSE_CHO_base_value,48)
+)
+
+
+# Final plot
+
+## Final data frame organisation for facetted plot
+final_SA_df <- rbind(RMSE_lipids_df, RMSE_biomass_df , RMSE_CHO_df)
+
+final_SA_plot <-
+  ggplot() + 
+  geom_rect(data = final_SA_df, 
+            aes(ymax = y_max, ymin = y_min, xmax = x_max, xmin = x_min, fill = fillValue), alpha = 0.95) +
+  # geom_vline(aes(xintercept = base_value)) +
+  scale_y_continuous(breaks = c(1:24), 
+                     labels = RMSE_CHO_base_vector_sorted[,1]) +
+  xlab(expression(bold("Model R"^2))) +
+  theme_paul +
+  theme(axis.title.y=element_blank(), legend.position = 'bottom',
+        # legend.title = element_blank(),
+        axis.text.y = element_text(size = 15)) +
+  facet_wrap(~ factor(facetValue,c("Lipids","Biomass","Carbohydrates")),
+             scales = "free_x"
+             )
+
+ggsave(
+    "Figure_SA_RMSE.png",
     plot = final_SA_plot,
     device = "png",
     scale = 1,
@@ -5846,5 +6027,6 @@ grid.arrange(arrangeGrob(plot_chla_deg + theme(legend.position="none", axis.titl
                            nrow=2,heights = c(5,5.5),widths = c(5,5)),
                mylegend,ncol = 2,widths = c(5,1))
 ```
+
 
 
