@@ -5430,11 +5430,11 @@ R2_lipids_base_value <- table_results_SA[1,3]
 R2_lipids_base_vector_0 <- table_results_SA[,3]
 R2_lipids_base_vector_0 <- R2_lipids_base_vector_0[-1]
 
-R2_lipids_base_vector_1 <- matrix(NA,nrow = 24,ncol = 4)
+R2_lipids_base_vector_1 <- matrix(NA,nrow = 22,ncol = 4)
 R2_lipids_base_vector_1 <- as.data.frame(R2_lipids_base_vector_1)
 R2_lipids_base_vector_1[,1] <- parameter_list
 
-for (i in 1:24){
+for (i in 1:22){
   R2_lipids_base_vector_1[i,2] <- R2_lipids_base_vector_0[2*i-1] # Min value
   R2_lipids_base_vector_1[i,3] <- R2_lipids_base_vector_0[2*i] # Max value
   R2_lipids_base_vector_1[i,4] <- max(abs(R2_lipids_base_vector_1[i,2]-R2_lipids_base_value),
@@ -5452,13 +5452,13 @@ width <- 0.95
 
 ## Creation of data frame for tornado plot
 R2_lipids_df <- data.frame(
-  y_min = rep(seq(1,24,1) - width/2,2),
-  y_max = rep(seq(1,24,1) + width/2,2),
-  x_min = c(R2_lipids_base_vector_sorted[,2],rep(R2_lipids_base_value,24)),
-  x_max = c(rep(R2_lipids_base_value,24),R2_lipids_base_vector_sorted[,3]),
-  fillValue = c(rep("Negative error",24),rep("Positive error",24)),
-  facetValue = rep("Lipids",48),
-  base_value = rep(R2_lipids_base_value,48)
+  y_min = rep(seq(1,22,1) - width/2,2),
+  y_max = rep(seq(1,22,1) + width/2,2),
+  x_min = c(R2_lipids_base_vector_sorted[,2],rep(R2_lipids_base_value,22)),
+  x_max = c(rep(R2_lipids_base_value,22),R2_lipids_base_vector_sorted[,3]),
+  fillValue = c(rep("Negative error",22),rep("Positive error",22)),
+  facetValue = rep("Lipids",44),
+  base_value = rep(R2_lipids_base_value,44)
 )
 
 
@@ -5471,11 +5471,11 @@ R2_biomass_base_value <- table_results_SA[1,1]
 R2_biomass_base_vector_0 <- table_results_SA[,1]
 R2_biomass_base_vector_0 <- R2_biomass_base_vector_0[-1]
 
-R2_biomass_base_vector_1 <- matrix(NA,nrow = 24,ncol = 4)
+R2_biomass_base_vector_1 <- matrix(NA,nrow = 22,ncol = 4)
 R2_biomass_base_vector_1 <- as.data.frame(R2_biomass_base_vector_1)
 R2_biomass_base_vector_1[,1] <- parameter_list
 
-for (i in 1:24){
+for (i in 1:22){
   R2_biomass_base_vector_1[i,2] <- R2_biomass_base_vector_0[2*i-1] # Min value
   R2_biomass_base_vector_1[i,3] <- R2_biomass_base_vector_0[2*i] # Max value
   R2_biomass_base_vector_1[i,4] <- max(abs(R2_biomass_base_vector_1[i,2]-R2_biomass_base_value),
@@ -5489,13 +5489,13 @@ R2_biomass_base_vector_sorted <- R2_biomass_base_vector_1[new_order,]
 
 ## Creation of data frame for tornado plot
 R2_biomass_df <- data.frame(
-  y_min = rep(seq(1,24,1) - width/2,2),
-  y_max = rep(seq(1,24,1) + width/2,2),
-  x_min = c(R2_biomass_base_vector_sorted[,2],rep(R2_biomass_base_value,24)),
-  x_max = c(rep(R2_biomass_base_value,24),R2_biomass_base_vector_sorted[,3]),
-  fillValue = c(rep("Negative error",24),rep("Positive error",24)),
-  facetValue = rep("Biomass",48),
-  base_value = rep(R2_biomass_base_value,48)
+  y_min = rep(seq(1,22,1) - width/2,2),
+  y_max = rep(seq(1,22,1) + width/2,2),
+  x_min = c(R2_biomass_base_vector_sorted[,2],rep(R2_biomass_base_value,22)),
+  x_max = c(rep(R2_biomass_base_value,22),R2_biomass_base_vector_sorted[,3]),
+  fillValue = c(rep("Negative error",22),rep("Positive error",22)),
+  facetValue = rep("Biomass",44),
+  base_value = rep(R2_biomass_base_value,44)
 )
 
 
@@ -5510,11 +5510,11 @@ R2_CHO_base_value <- table_results_SA[1,5]
 R2_CHO_base_vector_0 <- table_results_SA[,5]
 R2_CHO_base_vector_0 <- R2_CHO_base_vector_0[-1]
 
-R2_CHO_base_vector_1 <- matrix(NA,nrow = 24,ncol = 4)
+R2_CHO_base_vector_1 <- matrix(NA,nrow = 22,ncol = 4)
 R2_CHO_base_vector_1 <- as.data.frame(R2_CHO_base_vector_1)
 R2_CHO_base_vector_1[,1] <- parameter_list
 
-for (i in 1:24){
+for (i in 1:22){
   R2_CHO_base_vector_1[i,2] <- R2_CHO_base_vector_0[2*i-1] # Min value
   R2_CHO_base_vector_1[i,3] <- R2_CHO_base_vector_0[2*i] # Max value
   R2_CHO_base_vector_1[i,4] <- max(abs(R2_CHO_base_vector_1[i,2]-R2_CHO_base_value),
@@ -5533,13 +5533,13 @@ width <- 0.95
 
 # Creation of data frame for tornado plot
 R2_CHO_df <- data.frame(
-  y_min = rep(seq(1,24,1) - width/2,2),
-  y_max = rep(seq(1,24,1) + width/2,2),
-  x_min = c(R2_CHO_base_vector_sorted[,2],rep(R2_CHO_base_value,24)),
-  x_max = c(rep(R2_CHO_base_value,24),R2_CHO_base_vector_sorted[,3]),
-  fillValue = c(rep("Negative error",24),rep("Positive error",24)),
-  facetValue = rep("Carbohydrates",48),
-  base_value = rep(R2_CHO_base_value,48)
+  y_min = rep(seq(1,22,1) - width/2,2),
+  y_max = rep(seq(1,22,1) + width/2,2),
+  x_min = c(R2_CHO_base_vector_sorted[,2],rep(R2_CHO_base_value,22)),
+  x_max = c(rep(R2_CHO_base_value,22),R2_CHO_base_vector_sorted[,3]),
+  fillValue = c(rep("Negative error",22),rep("Positive error",22)),
+  facetValue = rep("Carbohydrates",44),
+  base_value = rep(R2_CHO_base_value,44)
 )
 
 
@@ -5553,7 +5553,7 @@ final_SA_plot <-
   geom_rect(data = final_SA_df, 
             aes(ymax = y_max, ymin = y_min, xmax = x_max, xmin = x_min, fill = fillValue), alpha = 0.95) +
   # geom_vline(aes(xintercept = base_value)) +
-  scale_y_continuous(breaks = c(1:24), 
+  scale_y_continuous(breaks = c(1:22), 
                      labels = R2_CHO_base_vector_sorted[,1]) +
   xlab(expression(bold("Model R"^2))) +
   theme_paul +
@@ -5579,38 +5579,6 @@ ggsave(
 
 ### Part II: with RMSE as output
 
-# Import sensitivity analysis results
-## Optional import
-## To avoid running the full code to create the output of the sensitivity analysis, the possibility is given to directly import the results from the sensitivity analysis. The final tornado diagram could then be obtained thanks to running only the present section of the script
-
-# Parameters list
-
-parameter_list <- c("Time discretisation",
-                    "Volume discretisation",
-                    "Flask depth",
-                    "Flask diameter",
-                    "Flask angle",
-                    "Carbon to biomass ratio",
-                    "Carbon to lipid ratio",
-                    "Carbon to protein ratio",
-                    "Rate of endogenous carbon consumption",
-                    expression(paste("Maximum specific rate of O"[2]," production")),
-                    expression("[C:N]"["char"]),
-                    expression(gamma["Pm"]),
-                    expression(sigma["max"]),
-                    expression("K"[q[p]]),
-                    expression(lambda["CHO"]),
-                    expression(mu[exp]^'max'),
-                    expression(alpha[q[p]^char]),
-                    expression(beta[q[p]^char]),
-                    expression(q[CHO]^basal),
-                    expression(P[L]^max),
-                    "Incident light intensity",
-                    "Volume change",
-                    expression(alpha[PI]),
-                    expression(K["2"]))
-
-
 # RMSE Lipids
 
 ## original value of output
@@ -5620,11 +5588,11 @@ RMSE_lipids_base_value <- table_results_SA[1,4]
 RMSE_lipids_base_vector_0 <- table_results_SA[,4]
 RMSE_lipids_base_vector_0 <- RMSE_lipids_base_vector_0[-1]
 
-RMSE_lipids_base_vector_1 <- matrix(NA,nrow = 24,ncol = 4)
+RMSE_lipids_base_vector_1 <- matrix(NA,nrow = 22,ncol = 4)
 RMSE_lipids_base_vector_1 <- as.data.frame(RMSE_lipids_base_vector_1)
 RMSE_lipids_base_vector_1[,1] <- parameter_list
 
-for (i in 1:24){
+for (i in 1:22){
   RMSE_lipids_base_vector_1[i,2] <- RMSE_lipids_base_vector_0[2*i-1] # Min value
   RMSE_lipids_base_vector_1[i,3] <- RMSE_lipids_base_vector_0[2*i] # Max value
   RMSE_lipids_base_vector_1[i,4] <- max(abs(RMSE_lipids_base_vector_1[i,2]-RMSE_lipids_base_value),
@@ -5642,13 +5610,13 @@ width <- 0.95
 
 ## Creation of data frame for tornado plot
 RMSE_lipids_df <- data.frame(
-  y_min = rep(seq(1,24,1) - width/2,2),
-  y_max = rep(seq(1,24,1) + width/2,2),
-  x_min = c(RMSE_lipids_base_vector_sorted[,2],rep(RMSE_lipids_base_value,24)),
-  x_max = c(rep(RMSE_lipids_base_value,24),RMSE_lipids_base_vector_sorted[,3]),
-  fillValue = c(rep("Negative error",24),rep("Positive error",24)),
-  facetValue = rep("Lipids",48),
-  base_value = rep(RMSE_lipids_base_value,48)
+  y_min = rep(seq(1,22,1) - width/2,2),
+  y_max = rep(seq(1,22,1) + width/2,2),
+  x_min = c(RMSE_lipids_base_vector_sorted[,2],rep(RMSE_lipids_base_value,22)),
+  x_max = c(rep(RMSE_lipids_base_value,22),RMSE_lipids_base_vector_sorted[,3]),
+  fillValue = c(rep("Negative error",22),rep("Positive error",22)),
+  facetValue = rep("Lipids",44),
+  base_value = rep(RMSE_lipids_base_value,44)
 )
 
 
@@ -5661,11 +5629,11 @@ RMSE_biomass_base_value <- table_results_SA[1,2]
 RMSE_biomass_base_vector_0 <- table_results_SA[,2]
 RMSE_biomass_base_vector_0 <- RMSE_biomass_base_vector_0[-1]
 
-RMSE_biomass_base_vector_1 <- matrix(NA,nrow = 24,ncol = 4)
+RMSE_biomass_base_vector_1 <- matrix(NA,nrow = 22,ncol = 4)
 RMSE_biomass_base_vector_1 <- as.data.frame(RMSE_biomass_base_vector_1)
 RMSE_biomass_base_vector_1[,1] <- parameter_list
 
-for (i in 1:24){
+for (i in 1:22){
   RMSE_biomass_base_vector_1[i,2] <- RMSE_biomass_base_vector_0[2*i-1] # Min value
   RMSE_biomass_base_vector_1[i,3] <- RMSE_biomass_base_vector_0[2*i] # Max value
   RMSE_biomass_base_vector_1[i,4] <- max(abs(RMSE_biomass_base_vector_1[i,2]-RMSE_biomass_base_value),
@@ -5679,13 +5647,13 @@ RMSE_biomass_base_vector_sorted <- RMSE_biomass_base_vector_1[new_order,]
 
 ## Creation of data frame for tornado plot
 RMSE_biomass_df <- data.frame(
-  y_min = rep(seq(1,24,1) - width/2,2),
-  y_max = rep(seq(1,24,1) + width/2,2),
-  x_min = c(RMSE_biomass_base_vector_sorted[,2],rep(RMSE_biomass_base_value,24)),
-  x_max = c(rep(RMSE_biomass_base_value,24),RMSE_biomass_base_vector_sorted[,3]),
-  fillValue = c(rep("Negative error",24),rep("Positive error",24)),
-  facetValue = rep("Biomass",48),
-  base_value = rep(RMSE_biomass_base_value,48)
+  y_min = rep(seq(1,22,1) - width/2,2),
+  y_max = rep(seq(1,22,1) + width/2,2),
+  x_min = c(RMSE_biomass_base_vector_sorted[,2],rep(RMSE_biomass_base_value,22)),
+  x_max = c(rep(RMSE_biomass_base_value,22),RMSE_biomass_base_vector_sorted[,3]),
+  fillValue = c(rep("Negative error",22),rep("Positive error",22)),
+  facetValue = rep("Biomass",44),
+  base_value = rep(RMSE_biomass_base_value,44)
 )
 
 
@@ -5700,11 +5668,11 @@ RMSE_CHO_base_value <- table_results_SA[1,6]
 RMSE_CHO_base_vector_0 <- table_results_SA[,6]
 RMSE_CHO_base_vector_0 <- RMSE_CHO_base_vector_0[-1]
 
-RMSE_CHO_base_vector_1 <- matrix(NA,nrow = 24,ncol = 4)
+RMSE_CHO_base_vector_1 <- matrix(NA,nrow = 22,ncol = 4)
 RMSE_CHO_base_vector_1 <- as.data.frame(RMSE_CHO_base_vector_1)
 RMSE_CHO_base_vector_1[,1] <- parameter_list
 
-for (i in 1:24){
+for (i in 1:22){
   RMSE_CHO_base_vector_1[i,2] <- RMSE_CHO_base_vector_0[2*i-1] # Min value
   RMSE_CHO_base_vector_1[i,3] <- RMSE_CHO_base_vector_0[2*i] # Max value
   RMSE_CHO_base_vector_1[i,4] <- max(abs(RMSE_CHO_base_vector_1[i,2]-RMSE_CHO_base_value),
@@ -5723,13 +5691,13 @@ width <- 0.95
 
 # Creation of data frame for tornado plot
 RMSE_CHO_df <- data.frame(
-  y_min = rep(seq(1,24,1) - width/2,2),
-  y_max = rep(seq(1,24,1) + width/2,2),
-  x_min = c(RMSE_CHO_base_vector_sorted[,2],rep(RMSE_CHO_base_value,24)),
-  x_max = c(rep(RMSE_CHO_base_value,24),RMSE_CHO_base_vector_sorted[,3]),
-  fillValue = c(rep("Negative error",24),rep("Positive error",24)),
-  facetValue = rep("Carbohydrates",48),
-  base_value = rep(RMSE_CHO_base_value,48)
+  y_min = rep(seq(1,22,1) - width/2,2),
+  y_max = rep(seq(1,22,1) + width/2,2),
+  x_min = c(RMSE_CHO_base_vector_sorted[,2],rep(RMSE_CHO_base_value,22)),
+  x_max = c(rep(RMSE_CHO_base_value,22),RMSE_CHO_base_vector_sorted[,3]),
+  fillValue = c(rep("Negative error",22),rep("Positive error",22)),
+  facetValue = rep("Carbohydrates",44),
+  base_value = rep(RMSE_CHO_base_value,44)
 )
 
 
@@ -5743,7 +5711,7 @@ final_SA_plot <-
   geom_rect(data = final_SA_df, 
             aes(ymax = y_max, ymin = y_min, xmax = x_max, xmin = x_min, fill = fillValue), alpha = 0.95) +
   # geom_vline(aes(xintercept = base_value)) +
-  scale_y_continuous(breaks = c(1:24), 
+  scale_y_continuous(breaks = c(1:22), 
                      labels = RMSE_CHO_base_vector_sorted[,1]) +
   xlab(expression(bold("Model R"^2))) +
   theme_paul +
@@ -6027,6 +5995,7 @@ grid.arrange(arrangeGrob(plot_chla_deg + theme(legend.position="none", axis.titl
                            nrow=2,heights = c(5,5.5),widths = c(5,5)),
                mylegend,ncol = 2,widths = c(5,1))
 ```
+
 
 
 
